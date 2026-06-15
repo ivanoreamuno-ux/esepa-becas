@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Becas ESEPA — Portal del Estudiante</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --brand: #8B4513;
+    --brand-light: #f9f0e8;
+    --brand-mid: #c47c3e;
+    --surface: #ffffff;
+    --bg: #f5f4f1;
+    --border: #e2ddd8;
+    --text: #1a1a1a;
+    --muted: #6b6560;
+    --success: #1a7a4a;
+    --success-bg: #e8f5ee;
+    --danger: #b91c1c;
+    --danger-bg: #fef2f2;
+    --warning: #92400e;
+    --warning-bg: #fffbeb;
+    --info: #1e40af;
+    --info-bg: #eff6ff;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  nav { background: var(--brand); color: white; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; }
+  .nav-user { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .nav-user span { opacity: 0.85; }
+  .btn-link { background: none; border: 1px solid rgba(255,255,255,0.4); color: white; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn-link:hover { background: rgba(255,255,255,0.15); }
+  .container { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: var(--bg); }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem 2rem; width: 100%; max-width: 420px; }
+  .auth-logo { text-align: center; margin-bottom: 1.5rem; }
+  .logo-circle { width: 64px; height: 64px; background: var(--brand); border-radius: 50%; margin: 0 auto 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 26px; font-weight: 700; }
+  .auth-logo h1 { font-size: 20px; font-weight: 600; }
+  .auth-logo p { font-size: 13px; color: var(--muted); }
+  .form-group { margin-bottom: 1rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: var(--surface); font-family: inherit; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand-mid); box-shadow: 0 0 0 3px rgba(139,69,19,0.1); }
+  textarea { resize: vertical; min-height: 90px; }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6560' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; font-family: inherit; }
+  .btn-primary { background: var(--brand); color: white; }
+  .btn-primary:hover { background: #7a3d10; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-full { width: 100%; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .card-title { font-size: 16px; font-weight: 600; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 1.25rem; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .tab { padding: 10px 18px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; transition: all 0.15s; }
+  .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .badge-pendiente { background: var(--warning-bg); color: var(--warning); }
+  .badge-en_revision { background: var(--info-bg); color: var(--info); }
+  .badge-aprobada { background: var(--success-bg); color: var(--success); }
+  .badge-rechazada { background: var(--danger-bg); color: var(--danger); }
+  .badge-aplicada { background: #f0f9ff; color: #0369a1; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: var(--brand); }
+  .solicitud-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 0.75rem; }
+  .solicitud-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
+  .solicitud-periodo { font-weight: 600; font-size: 15px; }
+  .solicitud-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  .monto-asignado { font-size: 16px; font-weight: 600; color: var(--success); }
+  .alert { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 1rem; }
+  .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid #a7f3d0; }
+  .alert-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+  .alert-info { background: var(--info-bg); color: var(--info); border: 1px solid #bfdbfe; }
+  .divider { text-align: center; color: var(--muted); font-size: 13px; margin: 1rem 0; position: relative; }
+  .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: var(--border); }
+  .divider::before { left: 0; } .divider::after { right: 0; }
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 0.75rem; }
+  .empty h3 { font-size: 16px; font-weight: 500; margin-bottom: 0.5rem; color: var(--text); }
+  .perfil-progress { background: var(--bg); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; border: 1px solid var(--border); }
+  .progress-bar-wrap { background: var(--border); border-radius: 4px; height: 6px; margin-top: 6px; }
+  .progress-bar { background: var(--brand); border-radius: 4px; height: 6px; transition: width 0.3s; }
+  .text-muted { color: var(--muted); font-size: 13px; }
+  .mt-1 { margin-top: 0.5rem; } .mt-2 { margin-top: 1rem; } .mt-3 { margin-top: 1.5rem; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr; } .tab { padding: 10px 12px; font-size: 13px; } }
+</style>
+</head>
+<body>
+<div id="page-auth" class="page active">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-circle">E</div>
+        <h1>Becas ESEPA</h1>
+        <p>Portal del Estudiante</p>
+      </div>
+      <div id="alert-auth"></div>
+      <div id="form-login">
+        <div class="form-group"><label>Correo electrónico</label><input type="email" id="login-email" placeholder="tu@correo.com"></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="login-password" placeholder="••••••••"></div>
+        <button class="btn btn-primary btn-full mt-2" onclick="login()" id="btn-login">Ingresar</button>
+        <div class="divider mt-2">¿No tenés cuenta?</div>
+        <button class="btn btn-secondary btn-full" onclick="showRegister()">Crear cuenta nueva</button>
+      </div>
+      <div id="form-register" style="display:none">
+        <div class="form-group"><label>Nombre completo</label><input type="text" id="reg-nombre" placeholder="Nombre y apellidos"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Correo</label><input type="email" id="reg-email" placeholder="tu@correo.com"></div>
+          <div class="form-group"><label>Contraseña</label><input type="password" id="reg-password" placeholder="Mín. 6 caracteres"></div>
+        </div>
+        <button class="btn btn-primary btn-full mt-2" onclick="register()" id="btn-register">Crear cuenta</button>
+        <div class="divider mt-2">¿Ya tenés cuenta?</div>
+        <button class="btn btn-secondary btn-full" onclick="showLogin()">Ingresar</button>
+      </div>
+      <div id="form-confirm" style="display:none">
+        <div class="alert alert-info" style="margin-bottom:0">📧 Revisá tu correo y hacé clic en el enlace de confirmación para activar tu cuenta.</div>
+        <button class="btn btn-secondary btn-full mt-2" onclick="showLogin()">Volver al ingreso</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-app" class="page">
+  <nav>
+    <div class="nav-brand">
+      <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">E</div>
+      Becas ESEPA
+    </div>
+    <div class="nav-user"><span id="nav-nombre"></span><button class="btn-link" onclick="logout()">Salir</button></div>
+  </nav>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('inicio')">Inicio</button>
+      <button class="tab" onclick="showTab('solicitar')">Solicitar beca</button>
+      <button class="tab" onclick="showTab('historial')">Mis solicitudes</button>
+      <button class="tab" onclick="showTab('perfil')">Mi perfil</button>
+    </div>
+
+    <div id="tab-inicio" class="tab-content active">
+      <div id="alert-app"></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total recibido</div><div class="stat-value" id="stat-total">₡0</div></div>
+        <div class="stat-card"><div class="stat-label">Solicitudes</div><div class="stat-value" id="stat-solicitudes">0</div></div>
+        <div class="stat-card"><div class="stat-label">Última solicitud</div><div id="stat-estado" style="margin-top:4px;">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Solicitud más reciente</span></div>
+        <div id="solicitud-reciente">
+          <div class="empty"><div class="empty-icon">📋</div><h3>Sin solicitudes aún</h3><p class="text-muted">Comenzá solicitando tu primera beca.</p><button class="btn btn-primary mt-2" onclick="showTab('solicitar')">Solicitar beca</button></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-header"><span class="card-title">Historial reciente</span></div><div id="historial-mini"><p class="text-muted">Sin registros.</p></div></div>
+    </div>
+
+    <div id="tab-solicitar" class="tab-content">
+      <div id="alert-form"></div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1.25rem">Nueva solicitud de beca</div>
+        <div class="form-group"><label>Tipo de solicitud</label>
+          <select id="sol-tipo"><option value="primera_vez">Primera vez — nunca he recibido beca en ESEPA</option><option value="renovacion">Renovación — recibí beca el período anterior</option></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Período académico</label>
+            <select id="sol-periodo"><option value="2C 2026">2do Cuatrimestre 2026</option><option value="3C 2026">3er Cuatrimestre 2026</option><option value="1C 2027">1er Cuatrimestre 2027</option></select>
+          </div>
+          <div class="form-group"><label>Cantidad de cursos</label><input type="number" id="sol-cursos" min="1" max="4" value="1"></div>
+        </div>
+        <div class="form-group"><label>Programa de estudios</label>
+          <select id="sol-programa">
+            <optgroup label="Bachilleratos"><option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option></optgroup>
+            <optgroup label="Maestrías"><option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option></optgroup>
+            <optgroup label="Diplomados"><option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option></optgroup>
+            <optgroup label="Certificados"><option>Certificados en Iglesias</option></optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Motivo de la solicitud</label>
+          <textarea id="sol-motivo" rows="6" placeholder="Describí con claridad tu situación económica, familiar y ministerial. Incluí por qué solicitás la beca y cómo te ayudaría a continuar tus estudios. Sé honesto y específico."></textarea>
+          <p class="text-muted mt-1">Mínimo 20 palabras. Un motivo detallado agiliza la revisión.</p>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:1.5rem;">
+          <button class="btn btn-secondary" onclick="showTab('inicio')">Cancelar</button>
+          <button class="btn btn-primary" onclick="enviarSolicitud()" id="btn-solicitud">Enviar solicitud</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-historial" class="tab-content">
+      <div class="section-title">Mis solicitudes</div>
+      <div id="lista-solicitudes"><div class="empty"><div class="empty-icon">📂</div><h3>Cargando...</h3></div></div>
+    </div>
+
+    <div id="tab-perfil" class="tab-content">
+      <div id="alert-perfil"></div>
+      <div class="card">
+        <div class="perfil-progress">
+          <div class="flex-between"><span style="font-size:13px;font-weight:500;">Completitud del perfil</span><span id="perfil-pct" style="font-size:13px;font-weight:600;color:var(--brand);">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="perfil-bar" style="width:0%"></div></div>
+          <p class="text-muted mt-1">Un perfil completo agiliza la revisión de tu solicitud.</p>
+        </div>
+        <div class="card-title" style="margin-bottom:1.25rem">Datos personales</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre completo</label><input type="text" id="p-nombre"></div>
+          <div class="form-group"><label>Número de identificación</label><input type="text" id="p-cedula" placeholder="Cédula, pasaporte o DNI"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Teléfono</label><input type="tel" id="p-telefono"></div>
+          <div class="form-group"><label>Sexo</label><select id="p-sexo"><option value="">Seleccionar</option><option>Hombre</option><option>Mujer</option><option>Prefiero no indicar</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>País</label><input type="text" id="p-pais" placeholder="Costa Rica"></div>
+          <div class="form-group"><label>Ciudad</label><input type="text" id="p-ciudad"></div>
+        </div>
+        <div class="card-title" style="margin:1.5rem 0 1rem">Iglesia y ministerio</div>
+        <div class="form-row">
+          <div class="form-group"><label>Iglesia a la que pertenece</label><input type="text" id="p-iglesia"></div>
+          <div class="form-group"><label>Nombre del pastor o líder</label><input type="text" id="p-pastor"></div>
+        </div>
+        <div class="form-group"><label>Correo del pastor o líder</label><input type="email" id="p-correo-pastor"></div>
+        <div class="form-group"><label>Ministerio que desarrolla</label><input type="text" id="p-ministerio" placeholder="Ej: Jóvenes, Alabanza, Misiones..."></div>
+        <div class="form-group"><label>Dedicación al ministerio</label><select id="p-dedicacion"><option value="">Seleccionar</option><option>Tiempo Completo</option><option>Medio Tiempo</option><option>Cuarto de Tiempo</option><option>Casual o Servicio</option></select></div>
+        <div class="card-title" style="margin:1.5rem 0 1rem">Trabajo secular</div>
+        <div class="form-group"><label>¿Tiene trabajo secular?</label><select id="p-trabajo" onchange="toggleTrabajo()"><option value="">Seleccionar</option><option value="true">Sí</option><option value="false">No</option></select></div>
+        <div class="form-group" id="trabajo-desc-wrap" style="display:none"><label>Describa su trabajo</label><textarea id="p-trabajo-desc" rows="2"></textarea></div>
+        <div class="card-title" style="margin:1.5rem 0 1rem">Programa académico</div>
+        <div class="form-row">
+          <div class="form-group"><label>Programa de estudios</label>
+            <select id="p-programa"><option value="">Seleccionar</option>
+              <optgroup label="Bachilleratos"><option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option></optgroup>
+              <optgroup label="Maestrías"><option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option></optgroup>
+              <optgroup label="Diplomados"><option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option></optgroup>
+              <optgroup label="Certificados"><option>Certificados en Iglesias</option></optgroup>
+            </select>
+          </div>
+          <div class="form-group"><label>Cuatrimestre de ingreso</label><input type="text" id="p-ingreso" placeholder="Ej: 1C 2023"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;">
+          <button class="btn btn-primary" onclick="guardarPerfil()" id="btn-perfil">Guardar perfil</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null, currentPerfil = null;
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { currentUser = session.user; await loadApp(); }
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN') { currentUser = session.user; await loadApp(); }
+    else if (event === 'SIGNED_OUT') { showPage('auth'); }
+  });
+}
+
+async function loadApp() { showPage('app'); await cargarPerfil(); await cargarInicio(); }
+
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  if (!email || !pw) { showAlert('auth','Completá todos los campos.','danger'); return; }
+  document.getElementById('btn-login').textContent = 'Ingresando...';
+  document.getElementById('btn-login').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  document.getElementById('btn-login').textContent = 'Ingresar';
+  document.getElementById('btn-login').disabled = false;
+  if (error) showAlert('auth','Correo o contraseña incorrectos.','danger');
+}
+
+async function register() {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pw = document.getElementById('reg-password').value;
+  if (!nombre || !email || !pw) { showAlert('auth','Completá todos los campos.','danger'); return; }
+  if (pw.length < 6) { showAlert('auth','La contraseña debe tener al menos 6 caracteres.','danger'); return; }
+  document.getElementById('btn-register').textContent = 'Creando cuenta...';
+  document.getElementById('btn-register').disabled = true;
+  const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { nombre_completo: nombre } } });
+  document.getElementById('btn-register').textContent = 'Crear cuenta';
+  document.getElementById('btn-register').disabled = false;
+  if (error) { showAlert('auth', error.message, 'danger'); return; }
+  document.getElementById('form-register').style.display = 'none';
+  document.getElementById('form-confirm').style.display = 'block';
+}
+
+async function logout() { await sb.auth.signOut(); showPage('auth'); }
+function showLogin() { ['form-login','form-register','form-confirm'].forEach(id => document.getElementById(id).style.display = id==='form-login'?'block':'none'); }
+function showRegister() { ['form-login','form-register','form-confirm'].forEach(id => document.getElementById(id).style.display = id==='form-register'?'block':'none'); }
+
+async function cargarPerfil() {
+  const { data } = await sb.from('perfiles').select('*').eq('id', currentUser.id).single();
+  if (!data) return;
+  currentPerfil = data;
+  document.getElementById('nav-nombre').textContent = data.nombre_completo;
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val !== null && val !== undefined) el.value = val; };
+  set('p-nombre', data.nombre_completo); set('p-cedula', data.numero_identificacion);
+  set('p-telefono', data.telefono); set('p-sexo', data.sexo);
+  set('p-pais', data.pais || 'Costa Rica'); set('p-ciudad', data.ciudad);
+  set('p-iglesia', data.iglesia); set('p-pastor', data.nombre_pastor);
+  set('p-correo-pastor', data.correo_pastor); set('p-ministerio', data.ministerio);
+  set('p-dedicacion', data.dedicacion_ministerio); set('p-programa', data.programa);
+  set('p-ingreso', data.cuatrimestre_ingreso);
+  if (data.tiene_trabajo_secular !== null) {
+    document.getElementById('p-trabajo').value = String(data.tiene_trabajo_secular);
+    if (data.tiene_trabajo_secular) { document.getElementById('trabajo-desc-wrap').style.display = 'block'; set('p-trabajo-desc', data.descripcion_trabajo_secular); }
+  }
+  const campos = ['nombre_completo','numero_identificacion','telefono','sexo','pais','ciudad','iglesia','nombre_pastor','ministerio','dedicacion_ministerio','programa'];
+  const llenos = campos.filter(c => data[c] && String(data[c]).trim()).length;
+  const pct = Math.round((llenos / campos.length) * 100);
+  document.getElementById('perfil-pct').textContent = pct + '%';
+  document.getElementById('perfil-bar').style.width = pct + '%';
+}
+
+async function guardarPerfil() {
+  const updates = {
+    nombre_completo: document.getElementById('p-nombre').value.trim(),
+    numero_identificacion: document.getElementById('p-cedula').value.trim(),
+    telefono: document.getElementById('p-telefono').value.trim(),
+    sexo: document.getElementById('p-sexo').value,
+    pais: document.getElementById('p-pais').value.trim(),
+    ciudad: document.getElementById('p-ciudad').value.trim(),
+    iglesia: document.getElementById('p-iglesia').value.trim(),
+    nombre_pastor: document.getElementById('p-pastor').value.trim(),
+    correo_pastor: document.getElementById('p-correo-pastor').value.trim(),
+    ministerio: document.getElementById('p-ministerio').value.trim(),
+    dedicacion_ministerio: document.getElementById('p-dedicacion').value,
+    tiene_trabajo_secular: document.getElementById('p-trabajo').value === 'true',
+    descripcion_trabajo_secular: document.getElementById('p-trabajo-desc').value.trim(),
+    programa: document.getElementById('p-programa').value,
+    cuatrimestre_ingreso: document.getElementById('p-ingreso').value.trim(),
+  };
+  if (!updates.nombre_completo) { showAlert('perfil','El nombre completo es requerido.','danger'); return; }
+  const btn = document.getElementById('btn-perfil'); btn.textContent = 'Guardando...'; btn.disabled = true;
+  const { error } = await sb.from('perfiles').update(updates).eq('id', currentUser.id);
+  btn.textContent = 'Guardar perfil'; btn.disabled = false;
+  if (error) { showAlert('perfil', 'Error: ' + error.message, 'danger'); return; }
+  showAlert('perfil', '✓ Perfil actualizado correctamente.', 'success');
+  document.getElementById('nav-nombre').textContent = updates.nombre_completo;
+}
+
+function toggleTrabajo() {
+  document.getElementById('trabajo-desc-wrap').style.display = document.getElementById('p-trabajo').value === 'true' ? 'block' : 'none';
+}
+
+async function cargarInicio() {
+  const { data } = await sb.from('solicitudes').select('*, fondos_beca(nombre)').eq('estudiante_id', currentUser.id).order('creado_en', { ascending: false });
+  if (!data || !data.length) return;
+  const total = data.filter(s => ['aprobada','aplicada'].includes(s.estado)).reduce((sum,s) => sum + (s.monto_asignado||0), 0);
+  document.getElementById('stat-total').textContent = '₡' + total.toLocaleString('es-CR');
+  document.getElementById('stat-solicitudes').textContent = data.length;
+  document.getElementById('stat-estado').innerHTML = badgeHtml(data[0].estado);
+  document.getElementById('solicitud-reciente').innerHTML = solicitudCard(data[0]);
+  document.getElementById('historial-mini').innerHTML = data.slice(0,3).map(s => `
+    <div class="solicitud-item">
+      <div class="solicitud-header"><span class="solicitud-periodo">${s.periodo}</span>${badgeHtml(s.estado)}</div>
+      <div style="font-size:13px;color:var(--muted)">${s.programa}</div>
+      <div class="solicitud-footer">
+        <span>${new Date(s.creado_en).toLocaleDateString('es-CR')}</span>
+        ${s.monto_asignado ? `<span class="monto-asignado">₡${s.monto_asignado.toLocaleString('es-CR')}</span>` : '<span>Pendiente de asignación</span>'}
+      </div>
+    </div>`).join('');
+}
+
+async function enviarSolicitud() {
+  const motivo = document.getElementById('sol-motivo').value.trim();
+  if (motivo.split(' ').filter(Boolean).length < 20) { showAlert('form','Describí tu situación con más detalle (mínimo 20 palabras).','danger'); return; }
+  const btn = document.getElementById('btn-solicitud'); btn.textContent = 'Enviando...'; btn.disabled = true;
+  const { error } = await sb.from('solicitudes').insert({
+    estudiante_id: currentUser.id,
+    tipo_solicitud: document.getElementById('sol-tipo').value,
+    periodo: document.getElementById('sol-periodo').value,
+    programa: document.getElementById('sol-programa').value,
+    cantidad_cursos: parseInt(document.getElementById('sol-cursos').value),
+    motivo, estado: 'pendiente'
+  });
+  btn.textContent = 'Enviar solicitud'; btn.disabled = false;
+  if (error) { showAlert('form', 'Error: ' + error.message, 'danger'); return; }
+  showAlert('form', '✓ Solicitud enviada. Te notificaremos por correo cuando haya novedades.', 'success');
+  document.getElementById('sol-motivo').value = '';
+  await cargarInicio();
+}
+
+async function cargarHistorial() {
+  const { data } = await sb.from('solicitudes').select('*, fondos_beca(nombre)').eq('estudiante_id', currentUser.id).order('creado_en', { ascending: false });
+  const container = document.getElementById('lista-solicitudes');
+  if (!data || !data.length) { container.innerHTML = `<div class="empty"><div class="empty-icon">📂</div><h3>Sin solicitudes</h3><p class="text-muted">Aún no has enviado ninguna solicitud.</p></div>`; return; }
+  container.innerHTML = data.map(s => solicitudCard(s, true)).join('');
+}
+
+function solicitudCard(s, detalle=false) {
+  return `<div class="solicitud-item">
+    <div class="solicitud-header">
+      <div><span class="solicitud-periodo">${s.periodo}</span> <span style="font-size:12px;color:var(--muted);margin-left:6px;">${s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación'}</span></div>
+      ${badgeHtml(s.estado)}
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:${detalle?'0.5rem':'0'}">${s.programa} · ${s.cantidad_cursos} curso${s.cantidad_cursos>1?'s':''}</div>
+    ${detalle ? `<p style="font-size:13px;color:var(--muted);margin-top:0.5rem;">${s.motivo.substring(0,140)}${s.motivo.length>140?'...':''}</p>` : ''}
+    <div class="solicitud-footer">
+      <span>${new Date(s.creado_en).toLocaleDateString('es-CR')}</span>
+      <div style="text-align:right">
+        ${s.monto_asignado ? `<div class="monto-asignado">₡${s.monto_asignado.toLocaleString('es-CR')}</div>${s.fondos_beca?.nombre?`<div style="font-size:11px;color:var(--muted)">${s.fondos_beca.nombre}</div>`:''}` : '<span>Pendiente de asignación</span>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+function badgeHtml(estado) {
+  const l = {pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};
+  return `<span class="badge badge-${estado}">${l[estado]||estado}</span>`;
+}
+
+function showTab(tab) {
+  const tabs = ['inicio','solicitar','historial','perfil'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i]===tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='historial') cargarHistorial();
+}
+
+function showPage(page) {
+  document.getElementById('page-auth').classList.toggle('active', page==='auth');
+  document.getElementById('page-app').classList.toggle('active', page==='app');
+}
+
+function showAlert(zone, msg, type) {
+  const el = document.getElementById('alert-'+zone);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 6000);
+}
+
+init();
+</script>
+</body>
+</html>

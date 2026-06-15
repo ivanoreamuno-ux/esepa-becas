@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Becas ESEPA — Reporte Junta Directiva</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { --brand:#8B4513; --surface:#fff; --bg:#f5f4f1; --border:#e2ddd8; --text:#1a1a1a; --muted:#6b6560; --success:#1a7a4a; --success-bg:#e8f5ee; --danger:#b91c1c; --danger-bg:#fef2f2; --info:#1e40af; --info-bg:#eff6ff; --radius:10px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); font-size:15px; line-height:1.6; }
+  nav { background:var(--brand); color:white; padding:0 1.5rem; display:flex; align-items:center; justify-content:space-between; height:56px; }
+  .nav-brand { font-weight:600; font-size:16px; display:flex; align-items:center; gap:8px; }
+  .nav-badge { background:rgba(255,255,255,0.2); font-size:11px; padding:2px 8px; border-radius:20px; }
+  .btn-link { background:none; border:1px solid rgba(255,255,255,0.4); color:white; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .container { max-width:1000px; margin:0 auto; padding:2rem 1.25rem; }
+  .report-header { margin-bottom:2rem; }
+  .report-header h1 { font-size:22px; font-weight:600; }
+  .report-header p { color:var(--muted); font-size:14px; margin-top:4px; }
+  .periodo-selector { display:flex; align-items:center; gap:12px; margin-bottom:2rem; }
+  select, input { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:inherit; }
+  select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6560' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; padding-right:28px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:2rem; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; }
+  .stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+  .stat-value { font-size:26px; font-weight:600; color:var(--brand); }
+  .stat-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; }
+  .card-title { font-size:15px; font-weight:600; margin-bottom:1.25rem; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:8px 10px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid var(--border); }
+  td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge-success { background:var(--success-bg); color:var(--success); }
+  .badge-info { background:var(--info-bg); color:var(--info); }
+  .badge-warn { background:#fffbeb; color:#92400e; }
+  .bar-wrap { background:var(--border); border-radius:4px; height:8px; }
+  .bar-fill { border-radius:4px; height:8px; background:var(--brand); }
+  .auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); }
+  .auth-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:2.5rem 2rem; width:100%; max-width:380px; text-align:center; }
+  .auth-card h1 { font-size:18px; font-weight:600; margin-bottom:0.5rem; }
+  .auth-card p { color:var(--muted); font-size:13px; margin-bottom:1.5rem; }
+  .alert { padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:1rem; }
+  .alert-danger { background:var(--danger-bg); color:var(--danger); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; padding:9px 20px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; border:none; font-family:inherit; }
+  .btn-primary { background:var(--brand); color:white; }
+  .btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+  @media (max-width:768px) { .stats-grid { grid-template-columns:repeat(2,1fr); } .grid-2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="page-auth" style="display:block">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div style="width:56px;height:56px;background:var(--brand);border-radius:50%;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;">E</div>
+      <h1>Reporte Junta Directiva</h1>
+      <p>Becas ESEPA — Acceso de solo lectura</p>
+      <div id="alert-auth"></div>
+      <div style="text-align:left;margin-bottom:1rem"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">CORREO</label><input type="email" id="j-email" placeholder="junta@esepa.org" style="width:100%"></div>
+      <div style="text-align:left;margin-bottom:1.25rem"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">CONTRASEÑA</label><input type="password" id="j-pw" style="width:100%"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="juntaLogin()" id="btn-j-login">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-app" style="display:none">
+  <nav>
+    <div class="nav-brand">Becas ESEPA <span class="nav-badge">Junta Directiva</span></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:13px;opacity:0.8" id="nav-junta-nombre"></span>
+      <button class="btn-link" onclick="juntaLogout()">Salir</button>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="report-header">
+      <h1>Reporte de Becas</h1>
+      <p id="reporte-fecha">Generado el —</p>
+    </div>
+    <div class="periodo-selector">
+      <label style="font-size:14px;color:var(--muted)">Período:</label>
+      <select id="sel-periodo" onchange="cargarReporte()">
+        <option value="">Todos los períodos</option>
+        <option value="2C 2026">2do Cuatrimestre 2026</option>
+        <option value="3C 2026">3er Cuatrimestre 2026</option>
+        <option value="1C 2027">1er Cuatrimestre 2027</option>
+        <option value="1C 2026">1er Cuatrimestre 2026</option>
+        <option value="3C 2025">3er Cuatrimestre 2025</option>
+        <option value="2C 2025">2do Cuatrimestre 2025</option>
+      </select>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total desembolsado</div><div class="stat-value" id="r-desembolsado">—</div><div class="stat-sub" id="r-desembolsado-sub"></div></div>
+      <div class="stat-card"><div class="stat-label">Aprobado pendiente</div><div class="stat-value" id="r-aprobado">—</div><div class="stat-sub">Aprobado, no aplicado</div></div>
+      <div class="stat-card"><div class="stat-label">Beneficiarios</div><div class="stat-value" id="r-beneficiarios">—</div><div class="stat-sub" id="r-benef-sub"></div></div>
+      <div class="stat-card"><div class="stat-label">Solicitudes pendientes</div><div class="stat-value" id="r-pendientes">—</div><div class="stat-sub">En espera de revisión</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Fondos de beca</div>
+        <div id="r-fondos"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribución por programa</div>
+        <div id="r-programas"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Beneficiarios aprobados</div>
+      <table>
+        <thead><tr><th>Estudiante</th><th>Programa</th><th>Período</th><th>Fondo</th><th>Monto</th><th>Estado</th></tr></thead>
+        <tbody id="r-tabla-benef"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: p } = await sb.from('perfiles').select('rol,nombre_completo').eq('id', session.user.id).single();
+    if (p && ['admin','junta'].includes(p.rol)) { document.getElementById('nav-junta-nombre').textContent = p.nombre_completo; showApp(); }
+  }
+}
+
+async function juntaLogin() {
+  const email = document.getElementById('j-email').value.trim();
+  const pw = document.getElementById('j-pw').value;
+  const btn = document.getElementById('btn-j-login'); btn.textContent = 'Ingresando...'; btn.disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  btn.textContent = 'Ingresar'; btn.disabled = false;
+  if (error) { document.getElementById('alert-auth').innerHTML = '<div class="alert alert-danger">Credenciales incorrectas.</div>'; return; }
+  const { data: p } = await sb.from('perfiles').select('rol,nombre_completo').eq('id', data.user.id).single();
+  if (!p || !['admin','junta'].includes(p.rol)) { document.getElementById('alert-auth').innerHTML = '<div class="alert alert-danger">No tenés acceso a este reporte.</div>'; await sb.auth.signOut(); return; }
+  document.getElementById('nav-junta-nombre').textContent = p.nombre_completo;
+  showApp();
+}
+
+async function juntaLogout() { await sb.auth.signOut(); document.getElementById('page-app').style.display = 'none'; document.getElementById('page-auth').style.display = 'block'; }
+
+function showApp() { document.getElementById('page-auth').style.display = 'none'; document.getElementById('page-app').style.display = 'block'; document.getElementById('reporte-fecha').textContent = 'Generado el ' + new Date().toLocaleDateString('es-CR', {weekday:'long',year:'numeric',month:'long',day:'numeric'}); cargarReporte(); }
+
+async function cargarReporte() {
+  const periodo = document.getElementById('sel-periodo').value;
+  let q = sb.from('solicitudes').select('*, perfiles(nombre_completo), fondos_beca(nombre)');
+  if (periodo) q = q.eq('periodo', periodo);
+  const { data: sols } = await q;
+  if (!sols) return;
+
+  const aplicadas = sols.filter(s => s.estado === 'aplicada');
+  const aprobadas = sols.filter(s => s.estado === 'aprobada');
+  const pendientes = sols.filter(s => ['pendiente','en_revision'].includes(s.estado));
+  const desembolsado = aplicadas.reduce((sum,s) => sum + (s.monto_asignado||0), 0);
+  const aprobadoPend = aprobadas.reduce((sum,s) => sum + (s.monto_asignado||0), 0);
+  const beneficiarios = new Set([...aplicadas, ...aprobadas].map(s => s.estudiante_id)).size;
+
+  document.getElementById('r-desembolsado').textContent = '₡' + desembolsado.toLocaleString('es-CR');
+  document.getElementById('r-desembolsado-sub').textContent = aplicadas.length + ' pago' + (aplicadas.length!==1?'s':'') + ' aplicado' + (aplicadas.length!==1?'s':'');
+  document.getElementById('r-aprobado').textContent = '₡' + aprobadoPend.toLocaleString('es-CR');
+  document.getElementById('r-beneficiarios').textContent = beneficiarios;
+  document.getElementById('r-benef-sub').textContent = 'Estudiantes beneficiados';
+  document.getElementById('r-pendientes').textContent = pendientes.length;
+
+  const { data: fondos } = await sb.from('fondos_beca').select('*').eq('activo', true);
+  document.getElementById('r-fondos').innerHTML = (fondos||[]).map(f => {
+    const usado = f.monto_total - f.monto_disponible;
+    const pct = f.monto_total > 0 ? Math.round((usado/f.monto_total)*100) : 0;
+    return `<div style="padding:0.6rem 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span style="font-weight:500">${f.nombre}</span>
+        <span style="color:var(--success);font-weight:600">₡${f.monto_disponible.toLocaleString('es-CR')}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${pct}% utilizado de ₡${f.monto_total.toLocaleString('es-CR')}</div>
+    </div>`;
+  }).join('') || '<p style="color:var(--muted);font-size:13px">Sin fondos.</p>';
+
+  const byProg = {};
+  const activos = [...aplicadas, ...aprobadas];
+  activos.forEach(s => { byProg[s.programa] = (byProg[s.programa]||0) + 1; });
+  const sortedProg = Object.entries(byProg).sort((a,b)=>b[1]-a[1]);
+  const maxProg = sortedProg[0]?.[1] || 1;
+  document.getElementById('r-programas').innerHTML = sortedProg.length ? sortedProg.map(([prog, cnt]) => `
+    <div style="padding:0.6rem 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${prog}</span><span style="font-weight:600">${cnt}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round((cnt/maxProg)*100)}%"></div></div>
+    </div>`).join('') : '<p style="color:var(--muted);font-size:13px">Sin datos.</p>';
+
+  const benef = [...aprobadas, ...aplicadas].sort((a,b) => (b.monto_asignado||0)-(a.monto_asignado||0));
+  document.getElementById('r-tabla-benef').innerHTML = benef.length ? benef.map(s => {
+    const estadoBadge = s.estado === 'aplicada' ? `<span class="badge badge-success">Aplicada</span>` : `<span class="badge badge-info">Aprobada</span>`;
+    return `<tr>
+      <td><strong>${s.perfiles?.nombre_completo||'—'}</strong></td>
+      <td style="font-size:12px">${s.programa}</td>
+      <td style="font-size:12px">${s.periodo}</td>
+      <td style="font-size:12px">${s.fondos_beca?.nombre||'—'}</td>
+      <td style="font-weight:600;color:var(--success)">₡${(s.monto_asignado||0).toLocaleString('es-CR')}</td>
+      <td>${estadoBadge}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Sin beneficiarios en este período</td></tr>';
+}
+
+init();
+</script>
+</body>
+</html>
