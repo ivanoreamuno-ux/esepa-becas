@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Becas ESEPA — Ingresar</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--navy:#2c4a7c;--navy-dark:#1e3560;--navy-mid:#4a6fa5;--navy-light:#eef2f9;--orange:#C1522A;--surface:#fff;--bg:#f4f6fa;--border:#dce3ef;--text:#1a1f2e;--muted:#5a6478;--danger:#b91c1c;--danger-bg:#fef2f2;--radius:10px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;background:linear-gradient(160deg,var(--navy-dark) 0%,var(--navy) 55%,var(--navy-mid) 100%);display:flex;align-items:center;justify-content:center;padding:2rem;}
+  .card{background:var(--surface);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,0.25);}
+  .logo-wrap{text-align:center;margin-bottom:1.75rem;}
+  .logo-wrap img{height:80px;width:200px;object-fit:cover;border-radius:8px;margin-bottom:1rem;}
+  .logo-wrap h1{font-size:20px;font-weight:700;color:var(--navy);}
+  .logo-wrap p{font-size:13px;color:var(--muted);margin-top:2px;}
+  .form-group{margin-bottom:1rem;}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:4px;}
+  input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);font-family:inherit;transition:border-color 0.15s,box-shadow 0.15s;}
+  input:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.12);}
+  .btn{width:100%;padding:11px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;margin-top:0.5rem;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange),#d4693d);color:white;box-shadow:0 2px 8px rgba(193,82,42,0.35);}
+  .btn-primary:hover{background:linear-gradient(135deg,#9e3e1e,var(--orange));}
+  .btn-primary:disabled{opacity:0.55;cursor:not-allowed;}
+  .alert{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;}
+  .loading{display:none;text-align:center;padding:2rem;}
+  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 1rem;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .divider{text-align:center;color:var(--muted);font-size:12px;margin:1.25rem 0 0.5rem;padding-top:1rem;border-top:1px solid var(--border);}
+  .register-link{text-align:center;font-size:13px;color:var(--muted);margin-top:0.75rem;}
+  .register-link a{color:var(--navy);font-weight:500;text-decoration:none;}
+  .register-link a:hover{text-decoration:underline;}
+  /* REGISTER FORM */
+  #form-register{display:none;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  #form-confirm{display:none;text-align:center;padding:1rem 0;}
+  #form-confirm .check{font-size:48px;margin-bottom:1rem;}
+  #form-confirm h2{font-size:18px;font-weight:600;color:var(--navy);margin-bottom:0.5rem;}
+  #form-confirm p{font-size:14px;color:var(--muted);line-height:1.6;}
+  .back-link{display:block;text-align:center;font-size:13px;color:var(--navy);cursor:pointer;margin-top:1rem;font-weight:500;}
+  .back-link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-wrap">
+    <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+    <h1>Portal de Becas</h1>
+    <p>Escuela de Estudios Pastorales</p>
+  </div>
+
+  <div id="alert-box" style="display:none" class="alert"></div>
+  <div class="loading" id="loading"><div class="spinner"></div><p style="color:var(--muted);font-size:13px">Verificando acceso...</p></div>
+
+  <!-- LOGIN -->
+  <div id="form-login">
+    <div class="form-group"><label>Correo electrónico</label><input type="email" id="email" placeholder="tu@correo.com" autocomplete="email"></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" onclick="login()" id="btn-login">Ingresar</button>
+    <div class="divider">¿Es tu primera vez?</div>
+    <div class="register-link"><a onclick="showRegister()">Crear cuenta de estudiante →</a></div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="form-register">
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="reg-nombre" placeholder="Nombre y apellidos"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Correo</label><input type="email" id="reg-email" placeholder="tu@correo.com"></div>
+      <div class="form-group"><label>Contraseña</label><input type="password" id="reg-password" placeholder="Mín. 6 caracteres"></div>
+    </div>
+    <button class="btn btn-primary" onclick="register()" id="btn-register">Crear cuenta</button>
+    <span class="back-link" onclick="showLogin()">← Volver al ingreso</span>
+  </div>
+
+  <!-- CONFIRM -->
+  <div id="form-confirm">
+    <div class="check">📧</div>
+    <h2>Revisá tu correo</h2>
+    <p>Te enviamos un enlace de confirmación. Hacé clic en él para activar tu cuenta y luego regresá aquí para ingresar.</p>
+    <span class="back-link" onclick="showLogin()">← Volver al ingreso</span>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+// Role → destination mapping
+const ROLE_ROUTES={
+  estudiante:'index.html',
+  admin:'admin.html',
+  comite:'comite.html',
+  junta:'junta.html',
+  registro:'registro.html'
+};
+
+async function init(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(session) await redirect(session.user.id);
+}
+
+async function redirect(userId){
+  showLoading(true);
+  const{data:p}=await sb.from('perfiles').select('rol').eq('id',userId).single();
+  if(p&&ROLE_ROUTES[p.rol]){
+    window.location.href=ROLE_ROUTES[p.rol];
+  } else {
+    showLoading(false);
+    showAlert('Rol no reconocido. Contactá al administrador.');
+    await sb.auth.signOut();
+  }
+}
+
+async function login(){
+  const email=document.getElementById('email').value.trim();
+  const pw=document.getElementById('password').value;
+  if(!email||!pw){showAlert('Completá todos los campos.');return;}
+  const btn=document.getElementById('btn-login');btn.textContent='Ingresando...';btn.disabled=true;
+  const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  btn.textContent='Ingresar';btn.disabled=false;
+  if(error){showAlert('Correo o contraseña incorrectos.');return;}
+  await redirect(data.user.id);
+}
+
+async function register(){
+  const nombre=document.getElementById('reg-nombre').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pw=document.getElementById('reg-password').value;
+  if(!nombre||!email||!pw){showAlert('Completá todos los campos.');return;}
+  if(pw.length<6){showAlert('La contraseña debe tener al menos 6 caracteres.');return;}
+  const btn=document.getElementById('btn-register');btn.textContent='Creando...';btn.disabled=true;
+  const{error}=await sb.auth.signUp({email,password:pw,options:{data:{nombre_completo:nombre}}});
+  btn.textContent='Crear cuenta';btn.disabled=false;
+  if(error){showAlert(error.message);return;}
+  document.getElementById('form-register').style.display='none';
+  document.getElementById('form-confirm').style.display='block';
+}
+
+function showLogin(){hideAll();document.getElementById('form-login').style.display='block';clearAlert();}
+function showRegister(){hideAll();document.getElementById('form-register').style.display='block';clearAlert();}
+function hideAll(){['form-login','form-register','form-confirm'].forEach(id=>document.getElementById(id).style.display='none');}
+function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';hideAll();}
+function showAlert(msg){const el=document.getElementById('alert-box');el.textContent=msg;el.style.display='block';}
+function clearAlert(){document.getElementById('alert-box').style.display='none';}
+
+init();
+</script>
+</body>
+</html>

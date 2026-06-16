@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Becas ESEPA — Módulo de Registro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--navy:#2c4a7c;--navy-dark:#1e3560;--navy-mid:#4a6fa5;--navy-light:#eef2f9;--orange:#C1522A;--surface:#fff;--bg:#f4f6fa;--border:#dce3ef;--text:#1a1f2e;--muted:#5a6478;--success:#1a7a4a;--success-bg:#e8f5ee;--danger:#b91c1c;--danger-bg:#fef2f2;--warning:#92400e;--warning-bg:#fffbeb;--info:#1e40af;--info-bg:#eff6ff;--radius:10px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;min-height:100vh;}
+  nav{background:linear-gradient(135deg,var(--navy-dark),var(--navy));color:white;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;box-shadow:0 2px 8px rgba(30,53,96,0.3);position:sticky;top:0;z-index:100;}
+  .nav-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;}
+  .nav-logo{height:40px;width:66px;object-fit:cover;border-radius:6px;}
+  .nav-badge{background:rgba(255,255,255,0.2);font-size:11px;padding:2px 8px;border-radius:20px;}
+  .nav-right{display:flex;align-items:center;gap:10px;}
+  .btn-link{background:none;border:1px solid rgba(255,255,255,0.4);color:white;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;}
+  .btn-link:hover{background:rgba(255,255,255,0.15);}
+  .tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;gap:0;position:sticky;top:60px;z-index:99;overflow-x:auto;}
+  .tab{padding:12px 18px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;transition:all 0.15s;white-space:nowrap;}
+  .tab.active{color:var(--navy);border-bottom-color:var(--orange);font-weight:600;}
+  .tab-badge{background:var(--danger);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px;}
+  .main{max-width:1100px;margin:0 auto;padding:1.75rem 1.25rem;}
+  .page{display:none;} .page.active{display:block;}
+  .page-title{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:0.25rem;}
+  .page-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
+  .card-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:1rem;}
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;border-top:3px solid var(--navy);}
+  .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .stat-value{font-size:22px;font-weight:700;color:var(--navy);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:8px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid var(--border);background:var(--bg);}
+  td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:hover td{background:var(--navy-light);}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-aprobada{background:var(--success-bg);color:var(--success);}
+  .badge-procesada_q10{background:#fef9c3;color:#713f12;}
+  .badge-notificado{background:var(--info-bg);color:var(--info);}
+  .badge-matriculado{background:var(--success-bg);color:var(--success);}
+  .badge-no_matriculado{background:var(--danger-bg);color:var(--danger);}
+  .badge-rechazada{background:var(--danger-bg);color:var(--danger);}
+  .badge-pendiente{background:var(--warning-bg);color:var(--warning);}
+  .badge-en_revision{background:var(--info-bg);color:var(--info);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all 0.15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange),#d4693d);color:white;}
+  .btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#9e3e1e,var(--orange));}
+  .btn-primary:disabled{opacity:0.45;cursor:not-allowed;}
+  .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--bg);}
+  .btn-navy{background:var(--navy);color:white;}
+  .btn-navy:hover{background:var(--navy-dark);}
+  .btn-sm{padding:5px 10px;font-size:12px;}
+  .btn-full{width:100%;}
+  .form-group{margin-bottom:1rem;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.03em;}
+  input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);font-family:inherit;transition:border-color 0.15s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.1);}
+  textarea{resize:vertical;}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6478' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:1rem;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+  .modal-title{font-size:16px;font-weight:600;color:var(--navy);}
+  .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;}
+  .detail-row{display:flex;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);}
+  .detail-row:last-child{border-bottom:none;}
+  .dl{width:160px;min-width:160px;color:var(--muted);font-size:12px;}
+  .dv{color:var(--text);flex:1;font-weight:500;}
+  .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;}
+  .alert-success{background:var(--success-bg);color:var(--success);border:1px solid #a7f3d0;}
+  .alert-danger{background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;}
+  .alert-warning{background:var(--warning-bg);color:var(--warning);border:1px solid #fde68a;}
+  .alert-info{background:var(--info-bg);color:var(--info);border:1px solid #bfdbfe;}
+  .pipeline{display:flex;align-items:center;gap:6px;margin-bottom:1.5rem;overflow-x:auto;padding:0.5rem 0;flex-wrap:wrap;}
+  .step{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:2px solid var(--border);color:var(--muted);}
+  .step.done{background:var(--success-bg);color:var(--success);border-color:#a7f3d0;}
+  .step.active{background:var(--navy);color:white;border-color:var(--navy);}
+  .step-arrow{color:var(--border);font-size:14px;}
+  .tag-chip{display:inline-block;background:var(--navy-light);color:var(--navy);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;cursor:pointer;border:1px solid var(--border);}
+  .tag-chip:hover{background:var(--navy);color:white;}
+  .editor-area{border:1px solid var(--border);border-radius:8px;padding:10px 12px;min-height:180px;font-size:13px;font-family:inherit;resize:vertical;width:100%;background:var(--surface);}
+  .empty{text-align:center;padding:3rem 1rem;color:var(--muted);}
+  .empty-icon{font-size:40px;margin-bottom:0.75rem;}
+  .empty h3{font-size:16px;font-weight:500;margin-bottom:0.5rem;color:var(--text);}
+  @media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr);} .form-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">
+    <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA" class="nav-logo">
+    Portal de Becas <span class="nav-badge">Registro</span>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:13px;opacity:0.85" id="nav-nombre"></span>
+    <a href="login.html" class="btn-link" onclick="logout(event)">Salir</a>
+  </div>
+</nav>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="showTab('cola')">Cola Q10 <span class="tab-badge" id="badge-cola">0</span></button>
+  <button class="tab" onclick="showTab('notificaciones')">Notificaciones <span class="tab-badge" id="badge-notif">0</span></button>
+  <button class="tab" onclick="showTab('matricula')">Matrícula <span class="tab-badge" id="badge-matricula" style="background:var(--navy)">0</span></button>
+  <button class="tab" onclick="showTab('plantillas')">Plantillas de correo</button>
+  <button class="tab" onclick="showTab('reporte')">Reporte</button>
+</div>
+
+<div class="main">
+  <div id="alert-main"></div>
+
+  <div id="tab-cola" class="page active">
+    <div class="page-title">Cola — Procesar en Q10</div>
+    <div class="page-sub">Becas aprobadas por el Comité pendientes de ingresar al sistema Q10.</div>
+    <div id="lista-cola"><div class="empty"><div class="empty-icon">⏳</div><h3>Cargando...</h3></div></div>
+  </div>
+
+  <div id="tab-notificaciones" class="page">
+    <div class="page-title">Notificaciones a estudiantes</div>
+    <div class="page-sub">Becas procesadas en Q10 — notificá a los estudiantes que su beca está lista.</div>
+    <div class="card" style="border-left:4px solid var(--orange)">
+      <div class="card-title">Envío masivo</div>
+      <div class="form-row" style="margin-bottom:0.75rem">
+        <div class="form-group" style="margin:0"><label>Plantilla a usar</label><select id="sel-plantilla-masiva" onchange="habilitarMasivo()"><option value="">Seleccionar...</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-navy btn-full" onclick="enviarMasivo()" id="btn-masivo" disabled>📧 Notificar a todos los pendientes</button></div>
+      </div>
+      <p style="font-size:12px;color:var(--muted)" id="masivo-count"></p>
+    </div>
+    <div id="lista-notificaciones"><div class="empty"><div class="empty-icon">📧</div><h3>Cargando...</h3></div></div>
+  </div>
+
+  <div id="tab-matricula" class="page">
+    <div class="page-title">Confirmación de matrícula</div>
+    <div class="page-sub">Estudiantes notificados — confirmá si completaron su matrícula al inicio del cuatrimestre.</div>
+    <div id="lista-matricula"><div class="empty"><div class="empty-icon">🎓</div><h3>Cargando...</h3></div></div>
+  </div>
+
+  <div id="tab-plantillas" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <div><div class="page-title">Plantillas de correo</div><div class="page-sub">Editá las plantillas para notificar a los estudiantes. Usá variables para personalizar.</div></div>
+      <button class="btn btn-primary" onclick="nuevaPlantilla()">+ Nueva plantilla</button>
+    </div>
+    <div id="lista-plantillas"><div class="empty"><div class="empty-icon">📝</div><h3>Cargando...</h3></div></div>
+  </div>
+
+  <div id="tab-reporte" class="page">
+    <div class="page-title">Reporte de registro</div>
+    <div class="page-sub">Estado completo de todas las solicitudes en el proceso de registro.</div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-label">Aprobadas</div><div class="stat-value" id="r-aprobadas">—</div></div>
+      <div class="stat" style="border-top-color:#713f12"><div class="stat-label">En Q10</div><div class="stat-value" id="r-q10" style="color:#713f12">—</div></div>
+      <div class="stat" style="border-top-color:var(--info)"><div class="stat-label">Notificados</div><div class="stat-value" id="r-notif" style="color:var(--info)">—</div></div>
+      <div class="stat" style="border-top-color:var(--success)"><div class="stat-label">Matriculados</div><div class="stat-value" id="r-matr" style="color:var(--success)">—</div></div>
+      <div class="stat" style="border-top-color:var(--danger)"><div class="stat-label">No matriculados</div><div class="stat-value" id="r-nomatr" style="color:var(--danger)">—</div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:1rem;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">
+        <select id="rep-f-estado" onchange="renderReporte()"><option value="">Todos los estados</option><option value="aprobada">Aprobada</option><option value="procesada_q10">Procesada Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
+        <select id="rep-f-periodo" onchange="renderReporte()"><option value="">Todos los períodos</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
+        <input type="text" id="rep-buscar" placeholder="Buscar..." oninput="renderReporte()" style="min-width:180px">
+      </div>
+      <table><thead><tr><th>Estudiante</th><th>Programa</th><th>Período</th><th>Monto</th><th>Estado</th><th>Q10</th><th>Notificado</th><th>Matrícula</th><th></th></tr></thead>
+      <tbody id="rep-tabla"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROCESAR Q10 -->
+<div class="modal-overlay" id="modal-q10">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="mq10-titulo">Procesar en Q10</span><button class="close-btn" onclick="closeModal('modal-q10')">×</button></div>
+    <div id="alert-mq10"></div>
+    <div id="mq10-pipeline"></div>
+    <div id="mq10-info"></div>
+    <div class="alert alert-info">📋 Ingresá esta beca en el sistema Q10 usando los datos de arriba, luego confirmá aquí para avanzar el proceso.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-q10')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-conf-q10" onclick="confirmarQ10()">✅ Ingresado en Q10 — Avanzar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODIFICAR MONTO -->
+<div class="modal-overlay" id="modal-mod">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><span class="modal-title">Modificar monto de beca</span><button class="close-btn" onclick="closeModal('modal-mod')">×</button></div>
+    <div id="alert-mmod"></div>
+    <div class="alert alert-warning">⚠ Esto generará una alerta automática al Comité de Becas y al Administrador.</div>
+    <div class="form-group"><label>Monto actual</label><input type="text" id="mod-actual" disabled style="background:var(--bg)"></div>
+    <div class="form-group"><label>Nuevo monto (₡)</label><input type="number" id="mod-nuevo" placeholder="0"></div>
+    <div class="form-group"><label>Razón del cambio (obligatoria — visible para Comité y Admin)</label><textarea id="mod-razon" rows="4" placeholder="Explicá por qué se modifica el monto..."></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-mod')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarModificacion()" id="btn-gmod">Guardar cambio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTIF INDIVIDUAL -->
+<div class="modal-overlay" id="modal-notif-ind">
+  <div class="modal" style="max-width:660px">
+    <div class="modal-header"><span class="modal-title" id="mni-titulo">Notificar estudiante</span><button class="close-btn" onclick="closeModal('modal-notif-ind')">×</button></div>
+    <div id="alert-mni"></div>
+    <div class="form-group"><label>Plantilla</label><select id="mni-plantilla" onchange="cargarVistaPrevia()"><option value="">Seleccionar...</option></select></div>
+    <div class="form-group"><label>Asunto</label><input type="text" id="mni-asunto"></div>
+    <div class="form-group"><label>Cuerpo del correo (podés editar antes de enviar)</label><textarea id="mni-cuerpo" class="editor-area" rows="10"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-notif-ind')">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarNotifInd()" id="btn-env-notif">📧 Enviar correo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MATRÍCULA -->
+<div class="modal-overlay" id="modal-mat">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><span class="modal-title" id="mmat-titulo">Confirmar matrícula</span><button class="close-btn" onclick="closeModal('modal-mat')">×</button></div>
+    <div id="alert-mmat"></div>
+    <div id="mmat-info" style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:13px"></div>
+    <div class="form-group"><label>Resultado</label><select id="mat-resultado"><option value="">Seleccionar...</option><option value="matriculado">✅ Completó la matrícula</option><option value="no_matriculado">❌ No completó la matrícula</option></select></div>
+    <div class="form-group"><label>Notas privadas (solo Registro, Comité y Admin)</label><textarea id="mat-notas" rows="4" placeholder="Describí lo que ocurrió..."></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-mat')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarMatricula()" id="btn-conf-mat">Confirmar y cerrar proceso</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLANTILLA -->
+<div class="modal-overlay" id="modal-pl">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><span class="modal-title" id="mpl-titulo">Plantilla de correo</span><button class="close-btn" onclick="closeModal('modal-pl')">×</button></div>
+    <div id="alert-mpl"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre</label><input type="text" id="pl-nombre" placeholder="Nombre descriptivo"></div>
+      <div class="form-group"><label>Estado</label><select id="pl-activa"><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
+    </div>
+    <div class="form-group"><label>Asunto</label><input type="text" id="pl-asunto" placeholder="Asunto del correo"></div>
+    <div class="form-group">
+      <label>Variables disponibles</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <span class="tag-chip" onclick="insertVar('{{nombre}}')">{nombre}</span>
+        <span class="tag-chip" onclick="insertVar('{{periodo}}')">{periodo}</span>
+        <span class="tag-chip" onclick="insertVar('{{monto}}')">{monto}</span>
+        <span class="tag-chip" onclick="insertVar('{{fondo}}')">{fondo}</span>
+        <span class="tag-chip" onclick="insertVar('{{programa}}')">{programa}</span>
+      </div>
+      <label>Cuerpo</label>
+      <textarea id="pl-cuerpo" class="editor-area" rows="12" placeholder="Escribí el correo aquí. Usá las variables para personalizar."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-pl')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPlantilla()" id="btn-gpl">Guardar plantilla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let currentUser=null,solicitudActual=null,plantillaActual=null;
+let todasSolicitudes=[],plantillas=[];
+const ESTADOS={pendiente:'Pendiente',en_revision:'En revision',aprobada:'Aprobada',rechazada:'Rechazada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado',no_matriculado:'No matriculado',aplicada:'Aplicada'};
+
+async function init(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='login.html';return;}
+  const{data:p}=await sb.from('perfiles').select('*').eq('id',session.user.id).single();
+  if(!p||!['registro','admin'].includes(p.rol)){window.location.href='login.html';return;}
+  currentUser=session.user;
+  document.getElementById('nav-nombre').textContent=p.nombre_completo;
+  await cargarTodo();
+}
+
+async function logout(e){e.preventDefault();await sb.auth.signOut();window.location.href='login.html';}
+
+async function cargarTodo(){
+  const{data}=await sb.from('solicitudes').select('*,perfiles(nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
+  todasSolicitudes=data||[];
+  const{data:pl}=await sb.from('plantillas_correo').select('*').eq('activa',true).order('nombre');
+  plantillas=pl||[];
+  renderCola();renderNotificaciones();renderMatricula();renderPlantillasList();renderReporte();
+  const cola=todasSolicitudes.filter(s=>s.estado==='aprobada').length;
+  const notif=todasSolicitudes.filter(s=>s.estado==='procesada_q10').length;
+  const mat=todasSolicitudes.filter(s=>s.estado==='notificado').length;
+  setBadge('badge-cola',cola);setBadge('badge-notif',notif);setBadge('badge-matricula',mat);
+  document.getElementById('masivo-count').textContent=notif+' beca'+(notif!==1?'s':'')+' pendiente'+(notif!==1?'s':'')+' de notificacion.';
+}
+
+function setBadge(id,n){const el=document.getElementById(id);el.textContent=n;el.style.display=n>0?'inline':'none';}
+
+function renderCola(){
+  const items=todasSolicitudes.filter(s=>s.estado==='aprobada');
+  const c=document.getElementById('lista-cola');
+  if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\u2705</div><h3>Sin becas pendientes de procesar en Q10</h3></div>';return;}
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Fondo</th><th>Monto</th><th>Aprobada</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-size:12px">'+(s.fondos_beca?.nombre||'-')+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.revisado_en||s.creado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirQ10(\''+s.id+'\')">Procesar Q10</button></td></tr>').join('')+'</tbody></table></div>';
+}
+
+function renderNotificaciones(){
+  const items=todasSolicitudes.filter(s=>s.estado==='procesada_q10');
+  poblarPl('sel-plantilla-masiva');
+  const c=document.getElementById('lista-notificaciones');
+  if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83d\udcad</div><h3>Sin becas pendientes de notificacion</h3></div>';return;}
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Ingresado Q10</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.procesado_q10_en)+'</td><td style="display:flex;gap:6px;padding:8px 10px"><button class="btn btn-secondary btn-sm" onclick="abrirMod(\''+s.id+'\')">Modificar monto</button><button class="btn btn-navy btn-sm" onclick="abrirNotifInd(\''+s.id+'\')">\ud83d\udce7 Notificar</button></td></tr>').join('')+'</tbody></table></div>';
+}
+
+function renderMatricula(){
+  const items=todasSolicitudes.filter(s=>s.estado==='notificado');
+  const c=document.getElementById('lista-matricula');
+  if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83c\udf93</div><h3>Sin estudiantes pendientes de confirmacion</h3></div>';return;}
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Notificado</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.notificado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirMat(\''+s.id+'\')">Confirmar matricula</button></td></tr>').join('')+'</tbody></table></div>';
+}
+
+function abrirQ10(id){
+  const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
+  document.getElementById('mq10-titulo').textContent='Procesar en Q10 - '+(s.perfiles?.nombre_completo||'');
+  document.getElementById('mq10-pipeline').innerHTML=pipeHtml(s.estado);
+  document.getElementById('mq10-info').innerHTML='<div style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1rem">'+dr('Estudiante',s.perfiles?.nombre_completo)+dr('Programa',s.programa)+dr('Periodo',s.periodo)+dr('Fondo',s.fondos_beca?.nombre||'-')+dr('Monto','<strong style=\"color:var(--success)\">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</strong>')+dr('Notas del Comite',s.notas_comite||'-')+'</div>';
+  document.getElementById('alert-mq10').innerHTML='';
+  document.getElementById('modal-q10').classList.add('open');
+}
+
+async function confirmarQ10(){
+  if(!solicitudActual)return;
+  const btn=document.getElementById('btn-conf-q10');btn.textContent='Guardando...';btn.disabled=true;
+  const{error}=await sb.from('solicitudes').update({estado:'procesada_q10',procesado_q10_en:new Date().toISOString(),procesado_q10_por:currentUser.id}).eq('id',solicitudActual.id);
+  btn.textContent='\u2705 Ingresado en Q10 - Avanzar';btn.disabled=false;
+  if(error){document.getElementById('alert-mq10').innerHTML='<div class="alert alert-danger">'+error.message+'</div>';return;}
+  closeModal('modal-q10');showAlert('\u2713 Beca procesada en Q10 correctamente.','success');await cargarTodo();
+}
+
+function abrirMod(id){
+  const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
+  document.getElementById('mod-actual').value='\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR');
+  document.getElementById('mod-nuevo').value='';document.getElementById('mod-razon').value='';
+  document.getElementById('alert-mmod').innerHTML='';
+  document.getElementById('modal-mod').classList.add('open');
+}
+
+async function guardarModificacion(){
+  const nuevo=parseFloat(document.getElementById('mod-nuevo').value);
+  const razon=document.getElementById('mod-razon').value.trim();
+  if(!nuevo||nuevo<=0){document.getElementById('alert-mmod').innerHTML='<div class="alert alert-danger">Ingresa un monto valido.</div>';return;}
+  if(razon.split(' ').filter(Boolean).length<5){document.getElementById('alert-mmod').innerHTML='<div class="alert alert-danger">La razon debe tener al menos 5 palabras.</div>';return;}
+  const btn=document.getElementById('btn-gmod');btn.textContent='Guardando...';btn.disabled=true;
+  const original=solicitudActual.monto_asignado;
+  await sb.from('solicitudes').update({monto_asignado:nuevo,monto_original:original,monto_modificado_por:currentUser.id,monto_modificado_en:new Date().toISOString(),notas_registro:razon}).eq('id',solicitudActual.id);
+  await sb.from('alertas_comite').insert({solicitud_id:solicitudActual.id,tipo:'modificacion_monto',mensaje:'Registro modifico el monto de \u20a1'+(original||0).toLocaleString('es-CR')+' a \u20a1'+nuevo.toLocaleString('es-CR')+'. Razon: '+razon,creado_por:currentUser.id});
+  btn.textContent='Guardar cambio';btn.disabled=false;
+  closeModal('modal-mod');showAlert('\u2713 Monto modificado. Alerta enviada al Comite.','success');await cargarTodo();
+}
+
+function abrirNotifInd(id){
+  const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
+  document.getElementById('mni-titulo').textContent='Notificar - '+(s.perfiles?.nombre_completo||'');
+  poblarPl('mni-plantilla');
+  document.getElementById('mni-asunto').value='';document.getElementById('mni-cuerpo').value='';
+  document.getElementById('alert-mni').innerHTML='';
+  document.getElementById('modal-notif-ind').classList.add('open');
+}
+
+function cargarVistaPrevia(){
+  if(!solicitudActual)return;
+  const pid=document.getElementById('mni-plantilla').value;
+  const pl=plantillas.find(p=>p.id===pid);if(!pl)return;
+  document.getElementById('mni-asunto').value=procVar(pl.asunto,solicitudActual);
+  document.getElementById('mni-cuerpo').value=procVar(pl.cuerpo,solicitudActual);
+}
+
+async function enviarNotifInd(){
+  const asunto=document.getElementById('mni-asunto').value.trim();
+  const cuerpo=document.getElementById('mni-cuerpo').value.trim();
+  if(!asunto||!cuerpo){document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Completa asunto y cuerpo.</div>';return;}
+  const btn=document.getElementById('btn-env-notif');btn.textContent='Enviando...';btn.disabled=true;
+  await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:'',destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
+  await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',solicitudActual.id);
+  btn.textContent='\ud83d\udce7 Enviar correo';btn.disabled=false;
+  closeModal('modal-notif-ind');showAlert('\u2713 Estudiante notificado correctamente.','success');await cargarTodo();
+}
+
+function habilitarMasivo(){document.getElementById('btn-masivo').disabled=!document.getElementById('sel-plantilla-masiva').value;}
+
+async function enviarMasivo(){
+  const pid=document.getElementById('sel-plantilla-masiva').value;
+  const pl=plantillas.find(p=>p.id===pid);if(!pl)return;
+  const pend=todasSolicitudes.filter(s=>s.estado==='procesada_q10');
+  if(!pend.length){showAlert('No hay becas pendientes de notificacion.','warning');return;}
+  if(!confirm('Enviar notificacion a '+pend.length+' estudiante'+(pend.length!==1?'s':'')+' ?'))return;
+  const btn=document.getElementById('btn-masivo');btn.disabled=true;btn.textContent='Enviando...';
+  for(const s of pend){
+    await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:'',destinatario_nombre:s.perfiles?.nombre_completo||'',asunto:procVar(pl.asunto,s),cuerpo:procVar(pl.cuerpo,s),enviado_por:currentUser.id});
+    await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',s.id);
+  }
+  btn.disabled=false;btn.textContent='\ud83d\udce7 Notificar a todos los pendientes';
+  showAlert('\u2713 '+pend.length+' notificacion'+(pend.length!==1?'es':'')+' registrada'+(pend.length!==1?'s':'')+'.','success');await cargarTodo();
+}
+
+function abrirMat(id){
+  const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
+  document.getElementById('mmat-titulo').textContent='Matricula - '+(s.perfiles?.nombre_completo||'');
+  document.getElementById('mmat-info').innerHTML=dr('Estudiante',s.perfiles?.nombre_completo)+dr('Periodo',s.periodo)+dr('Monto','\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR'))+dr('Notificado',fmtD(s.notificado_en));
+  document.getElementById('mat-resultado').value='';document.getElementById('mat-notas').value='';
+  document.getElementById('alert-mmat').innerHTML='';
+  document.getElementById('modal-mat').classList.add('open');
+}
+
+async function confirmarMatricula(){
+  const r=document.getElementById('mat-resultado').value;
+  const n=document.getElementById('mat-notas').value.trim();
+  if(!r){document.getElementById('alert-mmat').innerHTML='<div class="alert alert-danger">Selecciona el resultado.</div>';return;}
+  const btn=document.getElementById('btn-conf-mat');btn.textContent='Guardando...';btn.disabled=true;
+  await sb.from('solicitudes').update({estado:r,confirmacion_matricula:r,confirmacion_en:new Date().toISOString(),confirmacion_por:currentUser.id,notas_registro:n||null}).eq('id',solicitudActual.id);
+  btn.textContent='Confirmar y cerrar proceso';btn.disabled=false;
+  closeModal('modal-mat');showAlert('\u2713 Proceso finalizado: '+(r==='matriculado'?'Matriculado.':'No matriculado.'),'success');await cargarTodo();
+}
+
+function renderPlantillasList(){
+  const c=document.getElementById('lista-plantillas');
+  if(!plantillas.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83d\udcdd</div><h3>Sin plantillas</h3></div>';return;}
+  c.innerHTML=plantillas.map(p=>'<div class="card" style="display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px">'+p.nombre+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Asunto: '+p.asunto+'</div><div style="font-size:12px;color:var(--muted);background:var(--bg);padding:6px 10px;border-radius:6px;max-height:60px;overflow:hidden">'+p.cuerpo.substring(0,150)+(p.cuerpo.length>150?'...':'')+'</div></div><button class="btn btn-secondary btn-sm" onclick="editarPl(\''+p.id+'\')">Editar</button></div>').join('');
+}
+
+function nuevaPlantilla(){plantillaActual=null;['pl-nombre','pl-asunto','pl-cuerpo'].forEach(id=>document.getElementById(id).value='');document.getElementById('pl-activa').value='true';document.getElementById('mpl-titulo').textContent='Nueva plantilla';document.getElementById('alert-mpl').innerHTML='';document.getElementById('modal-pl').classList.add('open');}
+
+function editarPl(id){
+  const p=plantillas.find(x=>x.id===id);if(!p)return;plantillaActual=p;
+  document.getElementById('mpl-titulo').textContent='Editar plantilla';
+  document.getElementById('pl-nombre').value=p.nombre;document.getElementById('pl-asunto').value=p.asunto;
+  document.getElementById('pl-cuerpo').value=p.cuerpo;document.getElementById('pl-activa').value=String(p.activa);
+  document.getElementById('alert-mpl').innerHTML='';document.getElementById('modal-pl').classList.add('open');
+}
+
+async function guardarPlantilla(){
+  const nombre=document.getElementById('pl-nombre').value.trim();
+  const asunto=document.getElementById('pl-asunto').value.trim();
+  const cuerpo=document.getElementById('pl-cuerpo').value.trim();
+  const activa=document.getElementById('pl-activa').value==='true';
+  if(!nombre||!asunto||!cuerpo){document.getElementById('alert-mpl').innerHTML='<div class="alert alert-danger">Completa todos los campos.</div>';return;}
+  const btn=document.getElementById('btn-gpl');btn.textContent='Guardando...';btn.disabled=true;
+  if(plantillaActual){await sb.from('plantillas_correo').update({nombre,asunto,cuerpo,activa,actualizado_en:new Date().toISOString()}).eq('id',plantillaActual.id);}
+  else{await sb.from('plantillas_correo').insert({nombre,tipo:'notificacion_estudiante',activa,asunto,cuerpo,creado_por:currentUser.id});}
+  btn.textContent='Guardar plantilla';btn.disabled=false;
+  closeModal('modal-pl');showAlert('\u2713 Plantilla guardada.','success');await cargarTodo();
+}
+
+function insertVar(v){const ta=document.getElementById('pl-cuerpo');const p=ta.selectionStart;ta.value=ta.value.substring(0,p)+v+ta.value.substring(ta.selectionEnd);ta.focus();ta.setSelectionRange(p+v.length,p+v.length);}
+
+function renderReporte(){
+  const fe=document.getElementById('rep-f-estado').value;
+  const fp=document.getElementById('rep-f-periodo').value;
+  const fb=document.getElementById('rep-buscar').value.toLowerCase();
+  const counts={aprobada:0,procesada_q10:0,notificado:0,matriculado:0,no_matriculado:0};
+  todasSolicitudes.forEach(s=>{if(s.estado in counts)counts[s.estado]++;});
+  document.getElementById('r-aprobadas').textContent=counts.aprobada;
+  document.getElementById('r-q10').textContent=counts.procesada_q10;
+  document.getElementById('r-notif').textContent=counts.notificado;
+  document.getElementById('r-matr').textContent=counts.matriculado;
+  document.getElementById('r-nomatr').textContent=counts.no_matriculado;
+  const filtradas=todasSolicitudes.filter(s=>(!fe||s.estado===fe)&&(!fp||s.periodo===fp)&&(!fb||s.perfiles?.nombre_completo?.toLowerCase().includes(fb)));
+  const tbody=document.getElementById('rep-tabla');
+  if(!filtradas.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados</td></tr>';return;}
+  tbody.innerHTML=filtradas.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td>'+bdg(s.estado)+'</td><td style="font-size:11px;color:var(--muted)">'+(s.procesado_q10_en?fmtD(s.procesado_q10_en):'-')+'</td><td style="font-size:11px;color:var(--muted)">'+(s.notificado_en?fmtD(s.notificado_en):'-')+'</td><td style="font-size:12px">'+(s.confirmacion_matricula?'<span style=\"color:var('+(s.confirmacion_matricula==='matriculado'?'--success':'--danger')+')\">\u25cf</span> '+(s.confirmacion_matricula==='matriculado'?'Si':'No'):'-')+'</td><td>'+(['aprobada','procesada_q10','notificado'].includes(s.estado)?'<button class="btn btn-secondary btn-sm" onclick="abrirDesdeReporte(\''+s.id+'\')">Ver</button>':'')+'</td></tr>').join('');
+}
+
+function abrirDesdeReporte(id){const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;if(s.estado==='aprobada')abrirQ10(id);else if(s.estado==='procesada_q10')abrirNotifInd(id);else if(s.estado==='notificado')abrirMat(id);}
+
+function poblarPl(selId){const sel=document.getElementById(selId);if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="">Seleccionar plantilla...</option>'+plantillas.map(p=>'<option value="'+p.id+'">'+p.nombre+'</option>').join('');if(cur)sel.value=cur;}
+function procVar(t,s){return t.replace(/{nombre}/g,s.perfiles?.nombre_completo||'Estudiante').replace(/{periodo}/g,s.periodo||'').replace(/{monto}/g,'\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')).replace(/{fondo}/g,s.fondos_beca?.nombre||'Fondo ESEPA').replace(/{programa}/g,s.programa||'');}
+function pipeHtml(e){const p=['aprobada','procesada_q10','notificado','matriculado'];const d=p.indexOf(e);return '<div class="pipeline">'+p.map((x,i)=>(i>0?'<span class="step-arrow">›</span>':'')+'<span class="step '+(i<d?'done':i===d?'active':'pending')+'">'+({aprobada:'Aprobada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado'})[x]+'</span>').join('')+'</div>';}
+function dr(l,v){return '<div class="detail-row"><span class="dl">'+l+'</span><span class="dv">'+(v||'-')+'</span></div>';}
+function bdg(e){return '<span class="badge badge-'+e+'">'+(ESTADOS[e]||e)+'</span>';}
+function abrevProg(p){return(p||'').replace('Bachillerato en ','Bac. ').replace('Maestria en ','Mae. ').replace('Diplomado en ','Dip. ');}
+function fmtD(d){return d?new Date(d).toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';}
+function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['cola','notificaciones','matricula','plantillas','reporte'][i]===t));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='notificaciones')poblarPl('sel-plantilla-masiva');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showAlert(msg,type='success'){const el=document.getElementById('alert-main');el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',6000);}
+
+init();
+</script>
+</body>
+</html>
