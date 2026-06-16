@@ -280,8 +280,22 @@ async function init(){
 
 async function logout(e){e.preventDefault();await sb.auth.signOut();window.location.href='login.html';}
 
+const EDGE_URL='https://dghypqykargoulzrkmrp.supabase.co/functions/v1/enviar-correo';
+
+async function llamarEdgeFunction(destinatario_email,destinatario_nombre,asunto,cuerpo){
+  const{data:{session}}=await sb.auth.getSession();
+  const res=await fetch(EDGE_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({destinatario_email,destinatario_nombre,asunto,cuerpo})
+  });
+  const json=await res.json();
+  if(!res.ok||json.ok===false) throw new Error(json.error||'Error enviando correo');
+  return json;
+}
+
 async function cargarTodo(){
-  const{data}=await sb.from('solicitudes').select('*,perfiles(nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
+  const{data}=await sb.from('solicitudes').select('*,perfiles(id,nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
   todasSolicitudes=data||[];
   const{data:pl}=await sb.from('plantillas_correo').select('*').eq('activa',true).order('nombre');
   plantillas=pl||[];
@@ -376,12 +390,33 @@ function cargarVistaPrevia(){
 async function enviarNotifInd(){
   const asunto=document.getElementById('mni-asunto').value.trim();
   const cuerpo=document.getElementById('mni-cuerpo').value.trim();
-  if(!asunto||!cuerpo){document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Completa asunto y cuerpo.</div>';return;}
+  if(!asunto||!cuerpo){document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Completá asunto y cuerpo.</div>';return;}
   const btn=document.getElementById('btn-env-notif');btn.textContent='Enviando...';btn.disabled=true;
-  await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:'',destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
-  await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',solicitudActual.id);
-  btn.textContent='\ud83d\udce7 Enviar correo';btn.disabled=false;
-  closeModal('modal-notif-ind');showAlert('\u2713 Estudiante notificado correctamente.','success');await cargarTodo();
+  try{
+    // Obtener correo real del estudiante
+    const estudianteId=solicitudActual.perfiles?.id||solicitudActual.estudiante_id;
+    const{data:userData}=await sb.auth.admin?sb.auth.admin.getUserById(estudianteId):{data:null};
+    // Fallback: buscar en tabla auth via RPC o usar correo guardado
+    let emailDestinatario='';
+    // Intentamos con la vista del sistema
+    const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+    emailDestinatario=emailData||solicitudActual.estudiante_email||'';
+    if(!emailDestinatario){
+      // Si no tenemos el correo, igual registramos pero avisamos
+      document.getElementById('alert-mni').innerHTML='<div class="alert alert-warning">⚠ No se encontró el correo del estudiante. El correo fue registrado pero no enviado. Agregá el correo manualmente.</div>';
+      btn.textContent='📧 Enviar correo';btn.disabled=false;
+      await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:'sin-correo',destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
+      return;
+    }
+    await llamarEdgeFunction(emailDestinatario,solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo);
+    await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:emailDestinatario,destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
+    await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',solicitudActual.id);
+    btn.textContent='📧 Enviar correo';btn.disabled=false;
+    closeModal('modal-notif-ind');showAlert('✓ Correo enviado y estudiante notificado correctamente.','success');await cargarTodo();
+  }catch(err){
+    btn.textContent='📧 Enviar correo';btn.disabled=false;
+    document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Error al enviar: '+err.message+'</div>';
+  }
 }
 
 function habilitarMasivo(){document.getElementById('btn-masivo').disabled=!document.getElementById('sel-plantilla-masiva').value;}
@@ -390,15 +425,33 @@ async function enviarMasivo(){
   const pid=document.getElementById('sel-plantilla-masiva').value;
   const pl=plantillas.find(p=>p.id===pid);if(!pl)return;
   const pend=todasSolicitudes.filter(s=>s.estado==='procesada_q10');
-  if(!pend.length){showAlert('No hay becas pendientes de notificacion.','warning');return;}
-  if(!confirm('Enviar notificacion a '+pend.length+' estudiante'+(pend.length!==1?'s':'')+' ?'))return;
-  const btn=document.getElementById('btn-masivo');btn.disabled=true;btn.textContent='Enviando...';
+  if(!pend.length){showAlert('No hay becas pendientes de notificación.','warning');return;}
+  if(!confirm('¿Enviás notificación a '+pend.length+' estudiante'+(pend.length!==1?'s':'')+' por correo?'))return;
+  const btn=document.getElementById('btn-masivo');btn.disabled=true;
+  let ok=0,errores=0;
   for(const s of pend){
-    await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:'',destinatario_nombre:s.perfiles?.nombre_completo||'',asunto:procVar(pl.asunto,s),cuerpo:procVar(pl.cuerpo,s),enviado_por:currentUser.id});
-    await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',s.id);
+    const asunto=procVar(pl.asunto,s);
+    const cuerpo=procVar(pl.cuerpo,s);
+    const nombre=s.perfiles?.nombre_completo||'';
+    const estudianteId=s.perfiles?.id||s.estudiante_id;
+    try{
+      // Buscar correo del estudiante via RPC
+      const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+      const email=emailData||'';
+      if(email){
+        await llamarEdgeFunction(email,nombre,asunto,cuerpo);
+        await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombre,asunto,cuerpo,enviado_por:currentUser.id});
+      } else {
+        await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:'sin-correo',destinatario_nombre:nombre,asunto,cuerpo,enviado_por:currentUser.id});
+      }
+      await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',s.id);
+      ok++;
+      btn.textContent='Enviando... ('+ok+'/'+pend.length+')';
+    }catch(e){errores++;console.error('Error con '+nombre+':',e);}
   }
-  btn.disabled=false;btn.textContent='\ud83d\udce7 Notificar a todos los pendientes';
-  showAlert('\u2713 '+pend.length+' notificacion'+(pend.length!==1?'es':'')+' registrada'+(pend.length!==1?'s':'')+'.','success');await cargarTodo();
+  btn.disabled=false;btn.textContent='📧 Notificar a todos los pendientes';
+  showAlert('✓ '+ok+' correo'+(ok!==1?'s':'')+' enviado'+(ok!==1?'s':'')+(errores>0?' · '+errores+' con error':'')+'.','success');
+  await cargarTodo();
 }
 
 function abrirMat(id){
