@@ -126,6 +126,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:13px;opacity:0.85" id="nav-comite-nombre"></span>
+      <button class="btn-link" onclick="showPage2('dashboard')" style="background:rgba(255,255,255,0.15);">📊 Dashboard</button>
       <button class="btn-link" onclick="comiteLogout()">Salir</button>
     </div>
   </nav>
@@ -145,20 +146,72 @@
 
       <!-- DASHBOARD -->
       <div id="p-dashboard" class="page active">
-        <div class="page-title">Dashboard del Comité</div>
-        <div class="page-sub">Resumen general de solicitudes de beca</div>
-        <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Por revisar</div><div class="stat-value" id="d-pendientes" style="color:var(--danger)">—</div></div>
-          <div class="stat-card"><div class="stat-label">En revisión</div><div class="stat-value" id="d-revision" style="color:var(--info)">—</div></div>
-          <div class="stat-card"><div class="stat-label">Aprobadas</div><div class="stat-value" id="d-aprobadas" style="color:var(--success)">—</div></div>
-          <div class="stat-card"><div class="stat-label">Rechazadas</div><div class="stat-value" id="d-rechazadas" style="color:var(--muted)">—</div></div>
-        </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
-          <div style="font-size:14px;font-weight:600;color:var(--brand);margin-bottom:1rem">Acciones rápidas</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <button class="btn btn-primary" onclick="showPage2('pendientes')" style="justify-content:flex-start;gap:10px">🔴 Revisar solicitudes pendientes</button>
-            <button class="btn btn-secondary" onclick="showPage2('en_revision')" style="justify-content:flex-start;gap:10px">🔵 Continuar revisiones en curso</button>
+        <div class="page-title">Dashboard de Solicitudes</div>
+        <div class="page-sub" id="dash-updated">Cargando datos...</div>
+
+        <!-- STATS GRID -->
+        <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+          <div class="stat-card" style="border-top-color:var(--danger);cursor:pointer" onclick="showPage2('pendientes')">
+            <div class="stat-label">Por revisar</div>
+            <div class="stat-value" id="d-pendientes" style="color:var(--danger)">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Nuevas</div>
           </div>
+          <div class="stat-card" style="border-top-color:var(--info);cursor:pointer" onclick="showPage2('en_revision')">
+            <div class="stat-label">En revisión</div>
+            <div class="stat-value" id="d-revision" style="color:var(--info)">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">En proceso</div>
+          </div>
+          <div class="stat-card" style="border-top-color:var(--success);cursor:pointer" onclick="showPage2('aprobadas')">
+            <div class="stat-label">Aprobadas</div>
+            <div class="stat-value" id="d-aprobadas" style="color:var(--success)">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Este período</div>
+          </div>
+          <div class="stat-card" style="cursor:pointer" onclick="showPage2('rechazadas')">
+            <div class="stat-label">Rechazadas</div>
+            <div class="stat-value" id="d-rechazadas" style="color:var(--muted)">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Este período</div>
+          </div>
+          <div class="stat-card" style="border-top-color:var(--brand)">
+            <div class="stat-label">Total becado</div>
+            <div class="stat-value" id="d-total-monto" style="font-size:16px;padding-top:4px">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Aprobado + aplicado</div>
+          </div>
+        </div>
+
+        <!-- ACCIONES RÁPIDAS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem">
+          <button class="btn btn-primary" onclick="showPage2('pendientes')" style="justify-content:flex-start;gap:10px;padding:12px 16px">
+            🔴 Revisar solicitudes pendientes
+          </button>
+          <button class="btn btn-secondary" onclick="showPage2('en_revision')" style="justify-content:flex-start;gap:10px;padding:12px 16px">
+            🔵 Continuar revisiones en curso
+          </button>
+        </div>
+
+        <!-- DOS COLUMNAS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+          <!-- Por programa -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:1rem">Solicitudes por programa</div>
+            <div id="d-por-programa"><p style="font-size:13px;color:var(--muted)">Cargando...</p></div>
+          </div>
+          <!-- Por período -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:1rem">Solicitudes por período</div>
+            <div id="d-por-periodo"><p style="font-size:13px;color:var(--muted)">Cargando...</p></div>
+          </div>
+        </div>
+
+        <!-- FONDOS -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">Estado de fondos de beca</div>
+          <div id="d-fondos"><p style="font-size:13px;color:var(--muted)">Cargando...</p></div>
+        </div>
+
+        <!-- ÚLTIMAS SOLICITUDES -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">Solicitudes recientes</div>
+          <div id="d-recientes"><p style="font-size:13px;color:var(--muted)">Cargando...</p></div>
         </div>
       </div>
 
@@ -239,13 +292,83 @@ async function cargarTodas(){
   document.getElementById('badge-pendientes').style.display=pend>0?'inline':'none';
 }
 
-function cargarDashboard(){
-  const counts={pendiente:0,en_revision:0,aprobada:0,rechazada:0};
+async function cargarDashboard(){
+  const counts={pendiente:0,en_revision:0,aprobada:0,rechazada:0,aplicada:0};
   todasSolicitudes.forEach(s=>counts[s.estado]=(counts[s.estado]||0)+1);
   document.getElementById('d-pendientes').textContent=counts.pendiente||0;
   document.getElementById('d-revision').textContent=counts.en_revision||0;
-  document.getElementById('d-aprobadas').textContent=counts.aprobada||0;
+  document.getElementById('d-aprobadas').textContent=(counts.aprobada||0)+(counts.aplicada||0);
   document.getElementById('d-rechazadas').textContent=counts.rechazada||0;
+  document.getElementById('dash-updated').textContent='Actualizado: '+new Date().toLocaleString('es-CR');
+
+  // Total monto
+  const totalMonto=todasSolicitudes.filter(s=>['aprobada','aplicada'].includes(s.estado)).reduce((sum,s)=>sum+(s.monto_asignado||0),0);
+  document.getElementById('d-total-monto').textContent='₡'+totalMonto.toLocaleString('es-CR');
+
+  // Por programa
+  const byProg={};
+  todasSolicitudes.forEach(s=>{const p=s.programa||'Sin programa';byProg[p]=(byProg[p]||0)+1;});
+  const maxP=Math.max(...Object.values(byProg))||1;
+  document.getElementById('d-por-programa').innerHTML=Object.entries(byProg).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:var(--text)">${p}</span><span style="font-weight:600;color:var(--brand)">${n}</span>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:5px">
+        <div style="background:linear-gradient(90deg,var(--brand),var(--brand-mid));border-radius:4px;height:5px;width:${Math.round((n/maxP)*100)}%"></div>
+      </div>
+    </div>`).join('')||'<p style="font-size:13px;color:var(--muted)">Sin datos</p>';
+
+  // Por período
+  const byPer={};
+  todasSolicitudes.forEach(s=>{const p=s.periodo||'Sin período';byPer[p]=(byPer[p]||0)+1;});
+  const maxPer=Math.max(...Object.values(byPer))||1;
+  document.getElementById('d-por-periodo').innerHTML=Object.entries(byPer).sort().reverse().map(([p,n])=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:var(--text)">${p}</span><span style="font-weight:600;color:var(--brand)">${n}</span>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:5px">
+        <div style="background:linear-gradient(90deg,var(--orange),#d4693d);border-radius:4px;height:5px;width:${Math.round((n/maxPer)*100)}%"></div>
+      </div>
+    </div>`).join('')||'<p style="font-size:13px;color:var(--muted)">Sin datos</p>';
+
+  // Fondos
+  const {data:fondos}=await sb.from('fondos_beca').select('*').eq('activo',true);
+  document.getElementById('d-fondos').innerHTML=(fondos&&fondos.length)?fondos.map(f=>{
+    const usado=f.monto_total-f.monto_disponible;
+    const pct=f.monto_total>0?Math.round((usado/f.monto_total)*100):0;
+    return `<div style="padding:0.75rem 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:14px;font-weight:500;color:var(--brand)">${f.nombre}</span>
+        <span style="font-size:13px;color:var(--success);font-weight:700">₡${f.monto_disponible.toLocaleString('es-CR')} disp.</span>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:6px">
+        <div style="background:linear-gradient(90deg,var(--brand),var(--brand-mid));border-radius:4px;height:6px;width:${pct}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${pct}% utilizado · Total: ₡${f.monto_total.toLocaleString('es-CR')}</div>
+    </div>`;
+  }).join(''):'<p style="font-size:13px;color:var(--muted)">Sin fondos registrados.</p>';
+
+  // Recientes
+  const recientes=[...todasSolicitudes].sort((a,b)=>new Date(b.creado_en)-new Date(a.creado_en)).slice(0,6);
+  document.getElementById('d-recientes').innerHTML=recientes.length?`
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)">Estudiante</th>
+        <th style="text-align:left;padding:6px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)">Programa</th>
+        <th style="text-align:left;padding:6px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)">Período</th>
+        <th style="text-align:left;padding:6px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)">Estado</th>
+        <th style="text-align:left;padding:6px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)"></th>
+      </tr></thead>
+      <tbody>${recientes.map(s=>`<tr style="cursor:pointer" onmouseover="this.style.background='var(--brand-light)'" onmouseout="this.style.background=''">
+        <td style="padding:9px 10px;border-bottom:1px solid var(--border)"><strong>${s.perfiles?.nombre_completo||'—'}</strong></td>
+        <td style="padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)">${(s.programa||'').replace('Bachillerato en ','Bac. ').replace('Maestría en ','Mae. ').replace('Diplomado en ','Dip. ')}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px">${s.periodo||'—'}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid var(--border)">${badgeHtml(s.estado)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid var(--border)"><button class="btn btn-secondary btn-sm" onclick="showPage2('${s.estado==='pendiente'?'pendientes':s.estado==='en_revision'?'en_revision':s.estado==='aprobada'||s.estado==='aplicada'?'aprobadas':'rechazadas'}');setTimeout(()=>abrirDetalle('${s.id}','${s.estado==='pendiente'?'pendientes':s.estado==='en_revision'?'en_revision':s.estado==='aprobada'||s.estado==='aplicada'?'aprobadas':'rechazadas'}'),200)">Ver</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`:'<p style="font-size:13px;color:var(--muted)">Sin solicitudes.</p>';
 }
 
 function showPage2(page){
