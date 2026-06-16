@@ -351,12 +351,23 @@ function updateCount(el,countId,min){
   else{div.textContent=wc+' / '+min+' palabras mínimas';div.className='char-count warn';}
 }
 
+const ROLE_ROUTES={admin:'admin.html',comite:'comite.html',junta:'junta.html',registro:'registro.html'};
+
 async function init(){
   const{data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;await loadApp();}
+  if(!session){window.location.href='login.html';return;}
+  // Verificar rol — si no es estudiante, redirigir al módulo correcto
+  const{data:p}=await sb.from('perfiles').select('rol').eq('id',session.user.id).single();
+  if(p&&ROLE_ROUTES[p.rol]){window.location.href=ROLE_ROUTES[p.rol];return;}
+  // Es estudiante — cargar la app normalmente
+  currentUser=session.user;
+  await loadApp();
   sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_IN'){currentUser=session.user;await loadApp();}
-    else if(event==='SIGNED_OUT'){showPage('auth');}
+    if(event==='SIGNED_IN'){
+      const{data:p2}=await sb.from('perfiles').select('rol').eq('id',session.user.id).single();
+      if(p2&&ROLE_ROUTES[p2.rol]){window.location.href=ROLE_ROUTES[p2.rol];return;}
+      currentUser=session.user;await loadApp();
+    } else if(event==='SIGNED_OUT'){window.location.href='login.html';}
   });
 }
 
@@ -386,7 +397,7 @@ async function register(){
   document.getElementById('form-confirm').style.display='block';
 }
 
-async function logout(){await sb.auth.signOut();showPage('auth');}
+async function logout(){await sb.auth.signOut();window.location.href='login.html';}
 function showLogin(){['form-login','form-register','form-confirm'].forEach(id=>document.getElementById(id).style.display=id==='form-login'?'block':'none');}
 function showRegister(){['form-login','form-register','form-confirm'].forEach(id=>document.getElementById(id).style.display=id==='form-register'?'block':'none');}
 
