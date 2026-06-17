@@ -258,6 +258,36 @@
           <div class="char-count" id="count-6">Mínimo 40 palabras</div>
         </div>
 
+        <!-- CARTA PASTORAL -->
+        <div style="background:linear-gradient(135deg,var(--brand-dark),var(--brand));border-radius:10px;padding:1.5rem;margin-bottom:1.25rem;color:white">
+          <div style="font-size:15px;font-weight:700;margin-bottom:0.5rem">📜 Carta de presentación pastoral</div>
+          <p style="font-size:13px;opacity:0.9;line-height:1.6;margin-bottom:1rem">Como parte del proceso de becas, ESEPA solicita que presentes una carta firmada por tu pastor o líder eclesiástico. Esta carta los invita a considerar apoyar tu formación. <strong>Debes presentarla aunque la respuesta de tu iglesia sea negativa.</strong></p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem">
+            <button class="btn" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.4)" onclick="generarCartaPersonalizada()">
+              📄 Generar mi carta personalizada
+            </button>
+            <a href="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Carta_Pastoral_ESEPA_PLANTILLA.docx" download class="btn" style="background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.3);text-decoration:none;font-size:13px">
+              ⬇ Descargar plantilla en blanco
+            </a>
+          </div>
+          <p style="font-size:12px;opacity:0.75">Tu carta personalizada se generará con tu nombre, el nombre de tu pastor y tu iglesia, listos para imprimir y presentar.</p>
+        </div>
+
+        <div class="pregunta-ministerial" style="border-left:4px solid var(--orange)">
+          <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:0.5rem">Subir carta firmada por tu pastor</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">Subí una foto o scan del documento firmado. Puede ser una imagen (JPG, PNG) o un PDF. Si tu pastor aún no la firma, podés enviar la solicitud y adjuntarla después contactando a administración.</div>
+          <input type="file" id="sol-carta-file" accept="image/*,.pdf" style="font-size:13px;padding:8px;border:1px dashed var(--border);border-radius:8px;width:100%;cursor:pointer;background:var(--bg)">
+          <div id="carta-upload-status" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+          <div class="form-group" style="margin-top:0.75rem;margin-bottom:0">
+            <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em">Respuesta de la iglesia (si ya la tenés)</label>
+            <select id="sol-carta-respuesta">
+              <option value="pendiente">Aún no la he presentado / pendiente de firma</option>
+              <option value="positiva">✅ Respuesta positiva — la iglesia apoyará</option>
+              <option value="negativa">❌ Respuesta negativa — la iglesia no puede apoyar en este momento</option>
+            </select>
+          </div>
+        </div>
+
         <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:1.5rem;">
           <button class="btn btn-secondary" onclick="showTab('inicio')">Cancelar</button>
           <button class="btn btn-primary" onclick="enviarSolicitud()" id="btn-solicitud">Enviar solicitud</button>
@@ -464,6 +494,50 @@ async function cargarInicio(){
   document.getElementById('historial-mini').innerHTML=data.slice(0,3).map(s=>solicitudCard(s)).join('');
 }
 
+function generarCartaPersonalizada(){
+  if(!currentPerfil){showAlert('form','Completá tu perfil primero.','danger');return;}
+  const nombre=currentPerfil.nombre_completo||'[NOMBRE DEL ESTUDIANTE]';
+  const pastor=currentPerfil.nombre_pastor||'[NOMBRE DEL PASTOR]';
+  const iglesia=currentPerfil.iglesia||'[NOMBRE DE LA IGLESIA]';
+  const programa=document.getElementById('sol-programa')?.value||currentPerfil.programa||'[PROGRAMA DE ESTUDIOS]';
+  const hoy=new Date().toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
+  // Crear URL de descarga personalizada con parámetros
+  const params=new URLSearchParams({nombre,pastor,iglesia,programa,fecha:hoy});
+  // Abrir modal de vista previa
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML=`<div style="background:white;border-radius:12px;padding:1.5rem;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="font-size:16px;font-weight:700;color:var(--brand);margin-bottom:1rem">📜 Tu carta personalizada</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">La carta se generará con los siguientes datos de tu perfil:</p>
+    <div style="background:var(--bg);border-radius:8px;padding:1rem;font-size:13px;margin-bottom:1rem">
+      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Estudiante:</strong> ${nombre}</div>
+      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Pastor / Líder:</strong> ${pastor}</div>
+      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Iglesia:</strong> ${iglesia}</div>
+      <div><strong style="color:var(--navy)">Programa:</strong> ${programa}</div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Descargá la plantilla, reemplazá los campos marcados con corchetes [ASÍ] con tu información, imprimila y presentala a tu pastor para su firma.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid #dce3ef;border-radius:8px;background:white;cursor:pointer;font-size:13px">Cerrar</button>
+      <a href="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Carta_Pastoral_ESEPA_PLANTILLA.docx" download="Carta_Pastoral_ESEPA_${nombre.replace(/ /g,'_')}.docx" style="padding:8px 16px;background:linear-gradient(135deg,#C1522A,#d4693d);color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">⬇ Descargar carta</a>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+}
+
+async function subirCartaArchivo(solicitudId){
+  const file=document.getElementById('sol-carta-file')?.files[0];
+  if(!file)return null;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const path=`${currentUser.id}/${solicitudId}/carta_pastoral.${ext}`;
+  const statusEl=document.getElementById('carta-upload-status');
+  if(statusEl)statusEl.textContent='Subiendo archivo...';
+  const{data,error}=await sb.storage.from('becas-documentos').upload(path,file,{upsert:true});
+  if(error){if(statusEl)statusEl.textContent='Error al subir: '+error.message;return null;}
+  if(statusEl)statusEl.textContent='✓ Archivo subido correctamente.';
+  return path;
+}
+
 async function enviarSolicitud(){
   if(!perfilCompleto(currentPerfil)){showAlert('form','Debés completar tu perfil antes de solicitar una beca.','danger');return;}
   const campos=[
@@ -483,8 +557,9 @@ async function enviarSolicitud(){
   const cursos=parseInt(document.getElementById('sol-cursos').value)||1;
   const tipo=prog.toLowerCase().includes('maestría')?'mae':'bach';
   const costo_total=TARIFAS.matricula[tipo]+(TARIFAS.curso[tipo]*cursos);
+  const cartaRespuesta=document.getElementById('sol-carta-respuesta')?.value||'pendiente';
   const btn=document.getElementById('btn-solicitud');btn.textContent='Enviando...';btn.disabled=true;
-  const{error}=await sb.from('solicitudes').insert({
+  const{data:solData,error}=await sb.from('solicitudes').insert({
     estudiante_id:currentUser.id,
     tipo_solicitud:document.getElementById('sol-tipo').value,
     periodo:document.getElementById('sol-periodo').value,
@@ -497,12 +572,23 @@ async function enviarSolicitud(){
     resp_referencia_pastoral:document.getElementById('sol-referencia').value.trim(),
     costo_matricula:TARIFAS.matricula[tipo],costo_por_curso:TARIFAS.curso[tipo],
     costo_total_cursos:TARIFAS.curso[tipo]*cursos,costo_total,
+    carta_pastoral_respuesta:cartaRespuesta,
+    carta_pastoral_subida_en:document.getElementById('sol-carta-file')?.files[0]?new Date().toISOString():null,
     estado:'pendiente',decision_comite:'pendiente'
-  });
+  }).select().single();
+  if(error){btn.textContent='Enviar solicitud';btn.disabled=false;showAlert('form','Error: '+error.message,'danger');return;}
+  // Subir archivo de carta pastoral si existe
+  if(solData?.id&&document.getElementById('sol-carta-file')?.files[0]){
+    btn.textContent='Subiendo carta...';
+    const cartaUrl=await subirCartaArchivo(solData.id);
+    if(cartaUrl){
+      await sb.from('solicitudes').update({carta_pastoral_url:cartaUrl}).eq('id',solData.id);
+    }
+  }
   btn.textContent='Enviar solicitud';btn.disabled=false;
-  if(error){showAlert('form','Error: '+error.message,'danger');return;}
   showAlert('form','✓ Tu solicitud fue enviada. El Comité de Becas la revisará y recibirás notificación por correo.','success');
   ['sol-economica','sol-ministerio','sol-conexion','sol-vision','sol-compromisos','sol-referencia'].forEach(id=>document.getElementById(id).value='');
+  if(document.getElementById('sol-carta-file'))document.getElementById('sol-carta-file').value='';
   await cargarInicio();
 }
 
