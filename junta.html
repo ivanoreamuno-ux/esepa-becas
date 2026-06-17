@@ -144,7 +144,7 @@ async function juntaLogin() {
   document.getElementById('nav-junta-nombre').textContent=p.nombre_completo; showApp();
 }
 
-async function juntaLogout(){await sb.auth.signOut();document.getElementById('page-app').style.display='none';document.getElementById('page-auth').style.display='block';}
+async function juntaLogout(){await sb.auth.signOut();window.location.href='login.html';}
 
 function showApp(){document.getElementById('page-auth').style.display='none';document.getElementById('page-app').style.display='block';document.getElementById('reporte-fecha').textContent='Generado el '+new Date().toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});cargarReporte();}
 

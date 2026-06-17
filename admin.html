@@ -125,8 +125,9 @@
     <div class="sidebar">
       <div class="sidebar-item active" onclick="showAdminPage('dashboard')"><span>📊</span> Dashboard</div>
       <div class="sidebar-item" onclick="showAdminPage('solicitudes')"><span>📋</span> Solicitudes</div>
-      <div class="sidebar-item" onclick="showAdminPage('fondos')"><span>💰</span> Fondos de beca</div>
+      <div class="sidebar-item" onclick="showAdminPage('fondos')"><span>💰</span> Fondos de Becas</div>
       <div class="sidebar-item" onclick="showAdminPage('estudiantes')"><span>👥</span> Estudiantes</div>
+      <div class="sidebar-item" onclick="showAdminPage('reportes')"><span>📈</span> Reportes</div>
     </div>
     <div class="main">
       <div id="adm-dashboard" class="page active">
@@ -165,7 +166,7 @@
 
       <div id="adm-fondos" class="page">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
-          <div class="page-title" style="margin:0">Fondos de beca</div>
+          <div class="page-title" style="margin:0">Fondos de Becas</div>
           <button class="btn btn-primary" onclick="openModalFondo()">+ Nuevo fondo</button>
         </div>
         <div id="alert-fondos"></div>
@@ -179,6 +180,30 @@
           <table>
             <thead><tr><th>Nombre</th><th>Programa</th><th>Iglesia</th><th>País</th><th>Perfil</th><th>Solicitudes</th></tr></thead>
             <tbody id="tabla-estudiantes"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="adm-reportes" class="page">
+        <div class="page-title">Reportes</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem">
+          <select id="rep-estado" onchange="cargarReportes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="procesada_q10">En Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
+          <select id="rep-periodo" onchange="cargarReportes()"><option value="">Todos los períodos</option><option value="1C 2026">1C 2026</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
+          <select id="rep-programa" onchange="cargarReportes()"><option value="">Todos los programas</option><option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option><option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option><option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option></select>
+          <select id="rep-sexo" onchange="cargarReportes()"><option value="">Todos (sexo)</option><option value="Hombre">Hombres</option><option value="Mujer">Mujeres</option></select>
+          <select id="rep-pais" onchange="cargarReportes()"><option value="">Todos los países</option><option value="Costa Rica">Costa Rica</option><option value="Guatemala">Guatemala</option><option value="Honduras">Honduras</option><option value="El Salvador">El Salvador</option><option value="Nicaragua">Nicaragua</option><option value="Panamá">Panamá</option><option value="Colombia">Colombia</option><option value="Venezuela">Venezuela</option><option value="México">México</option></select>
+          <select id="rep-ministerio" onchange="cargarReportes()"><option value="">Todos los ministerios</option><option value="Pastor">Pastoral</option><option value="Jóvenes">Jóvenes</option><option value="Misiones">Misiones</option><option value="Enseñanza">Enseñanza</option><option value="Alabanza">Alabanza</option><option value="Consejería">Consejería</option></select>
+          <select id="rep-dedicacion" onchange="cargarReportes()"><option value="">Toda dedicación</option><option value="Tiempo Completo">Tiempo Completo</option><option value="Medio Tiempo">Medio Tiempo</option><option value="Cuarto de Tiempo">Cuarto de Tiempo</option><option value="Casual o Servicio">Casual o Servicio</option></select>
+        </div>
+        <div class="stats-grid" id="rep-stats-grid">
+          <div class="stat-card"><div class="stat-label">Total solicitudes</div><div class="stat-value" id="rep-total">—</div></div>
+          <div class="stat-card"><div class="stat-label">Total becado</div><div class="stat-value" id="rep-monto" style="font-size:16px;padding-top:4px">—</div></div>
+          <div class="stat-card"><div class="stat-label">Beneficiarios únicos</div><div class="stat-value" id="rep-beneficiarios">—</div></div>
+          <div class="stat-card"><div class="stat-label">Mujeres</div><div class="stat-value" id="rep-mujeres">—</div></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr><th>Estudiante</th><th>Sexo</th><th>País</th><th>Programa</th><th>Período</th><th>Ministerio</th><th>Dedicación</th><th>Fondo</th><th>Monto</th><th>Estado</th></tr></thead>
+            <tbody id="rep-tabla"><tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">Seleccioná filtros para ver el reporte</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -213,17 +238,18 @@
 </div>
 
 <!-- MODAL FONDO -->
-<div class="modal-overlay" id="modal-fondo">
+<div class="modal-overlay" id="modal-editar-fondo">
   <div class="modal" style="max-width:420px">
     <div class="modal-header">
       <span class="modal-title" id="modal-fondo-titulo">Nuevo fondo de beca</span>
-      <button class="close-btn" onclick="closeModal('modal-fondo')">×</button>
+      <button class="close-btn" onclick="closeModal('modal-editar-fondo')">×</button>
     </div>
     <div class="form-group"><label>Nombre del fondo</label><input type="text" id="fondo-nombre" placeholder="Ej: Beca Providence" style="width:100%"></div>
     <div class="form-group"><label>Descripción</label><textarea id="fondo-desc" rows="2" style="width:100%" placeholder="Origen o propósito del fondo..."></textarea></div>
-    <div class="form-group"><label>Monto total disponible (₡)</label><input type="number" id="fondo-monto" placeholder="0" style="width:100%"></div>
+    <div class="form-group"><label>Monto total del fondo (₡)</label><input type="number" id="fondo-monto" placeholder="0" style="width:100%"></div>
+    <div style="border-top:1px solid var(--border);margin:1rem 0;padding-top:1rem"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.75rem">Carga administrativa (opcional)</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem"><div class="form-group" style="margin:0"><label>Monto de la carga (₡)</label><input type="number" id="fondo-carga" placeholder="0" style="width:100%"></div><div class="form-group" style="margin:0"><label>Descripción de la carga</label><input type="text" id="fondo-carga-desc" placeholder="Ej: Gastos operativos Q2" style="width:100%"></div></div><p style="font-size:11px;color:var(--muted);margin-top:6px">Una carga reduce el disponible del fondo para uso en becas.</p></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
-      <button class="btn btn-secondary" onclick="closeModal('modal-fondo')">Cancelar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-editar-fondo')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarFondo()" id="btn-guardar-fondo">Crear fondo</button>
     </div>
   </div>
@@ -287,7 +313,7 @@ async function adminLogin() {
   currentAdmin = data.user; document.getElementById('nav-admin-nombre').textContent = p.nombre_completo; showApp();
 }
 
-async function adminLogout() { await sb.auth.signOut(); document.getElementById('page-app').style.display='none'; document.getElementById('page-auth').style.display='block'; }
+async function adminLogout() { await sb.auth.signOut(); window.location.href='login.html'; }
 
 function showApp() { document.getElementById('page-auth').style.display='none'; document.getElementById('page-app').style.display='block'; cargarDashboard(); }
 
@@ -393,21 +419,80 @@ async function cargarFondos() {
   }).join('');
 }
 
-function openModalFondo(fondo=null) { fondoActual=fondo; document.getElementById('modal-fondo-titulo').textContent=fondo?'Editar fondo':'Nuevo fondo de beca'; document.getElementById('fondo-nombre').value=fondo?.nombre||''; document.getElementById('fondo-desc').value=fondo?.descripcion||''; document.getElementById('fondo-monto').value=fondo?.monto_total||''; document.getElementById('modal-fondo').classList.add('open'); }
+function openModalFondo(fondo=null) { fondoActual=fondo; document.getElementById('modal-fondo-titulo').textContent=fondo?'Editar fondo':'Nuevo fondo de beca'; document.getElementById('fondo-nombre').value=fondo?.nombre||''; document.getElementById('fondo-desc').value=fondo?.descripcion||''; document.getElementById('fondo-monto').value=fondo?.monto_total||''; document.getElementById('fondo-carga').value=''; document.getElementById('fondo-carga-desc').value=''; document.getElementById('modal-editar-fondo').classList.add('open'); }
 
 async function editarFondo(id) { const {data}=await sb.from('fondos_beca').select('*').eq('id',id).single(); if(data) openModalFondo(data); }
 
 async function guardarFondo() {
-  const nombre=document.getElementById('fondo-nombre').value.trim(); const desc=document.getElementById('fondo-desc').value.trim(); const monto=parseFloat(document.getElementById('fondo-monto').value)||0;
+  const nombre=document.getElementById('fondo-nombre').value.trim();
+  const desc=document.getElementById('fondo-desc').value.trim();
+  const monto=parseFloat(document.getElementById('fondo-monto').value)||0;
+  const carga=parseFloat(document.getElementById('fondo-carga').value)||0;
+  const cargaDesc=document.getElementById('fondo-carga-desc').value.trim();
   if(!nombre){alert('El nombre es requerido.');return;}
   const btn=document.getElementById('btn-guardar-fondo'); btn.textContent='Guardando...'; btn.disabled=true;
   let error;
-  if(fondoActual){ const diff=monto-(fondoActual.monto_total||0); const nuevoDisp=Math.max(0,(fondoActual.monto_disponible||0)+diff); ({error}=await sb.from('fondos_beca').update({nombre,descripcion:desc,monto_total:monto,monto_disponible:nuevoDisp}).eq('id',fondoActual.id)); }
-  else { ({error}=await sb.from('fondos_beca').insert({nombre,descripcion:desc,monto_total:monto,monto_disponible:monto,creado_por:currentAdmin.id})); }
+  if(fondoActual){
+    const diff=monto-(fondoActual.monto_total||0);
+    const nuevoDisp=Math.max(0,(fondoActual.monto_disponible||0)+diff-carga);
+    const nuevaDesc=carga>0?(desc+(cargaDesc?'\nCarga administrativa: ₡'+carga.toLocaleString('es-CR')+' ('+cargaDesc+')':'')):desc;
+    ({error}=await sb.from('fondos_beca').update({nombre,descripcion:nuevaDesc,monto_total:monto,monto_disponible:nuevoDisp}).eq('id',fondoActual.id));
+  } else {
+    const dispInicial=Math.max(0,monto-carga);
+    const descFinal=carga>0?(desc+(cargaDesc?'\nCarga administrativa: ₡'+carga.toLocaleString('es-CR')+' ('+cargaDesc+')':'')):desc;
+    ({error}=await sb.from('fondos_beca').insert({nombre,descripcion:descFinal,monto_total:monto,monto_disponible:dispInicial,creado_por:currentAdmin.id}));
+  }
   btn.textContent=fondoActual?'Guardar':'Crear fondo'; btn.disabled=false;
   if(error){alert('Error: '+error.message);return;}
-  closeModal('modal-fondo'); cargarFondos();
+  closeModal('modal-editar-fondo'); cargarFondos();
   showAlert('fondos','✓ Fondo guardado correctamente.','success');
+}
+
+async function cargarReportes() {
+  const estado=document.getElementById('rep-estado').value;
+  const periodo=document.getElementById('rep-periodo').value;
+  const programa=document.getElementById('rep-programa').value;
+  const sexo=document.getElementById('rep-sexo').value;
+  const pais=document.getElementById('rep-pais').value;
+  const dedicacion=document.getElementById('rep-dedicacion').value;
+
+  let q=sb.from('solicitudes').select('*,perfiles(nombre_completo,sexo,pais,ministerio,dedicacion_ministerio),fondos_beca(nombre)');
+  if(estado) q=q.eq('estado',estado);
+  if(periodo) q=q.eq('periodo',periodo);
+  if(programa) q=q.eq('programa',programa);
+
+  const{data}=await q.order('creado_en',{ascending:false});
+  if(!data){return;}
+
+  let filtradas=data;
+  if(sexo) filtradas=filtradas.filter(s=>s.perfiles?.sexo===sexo);
+  if(pais) filtradas=filtradas.filter(s=>s.perfiles?.pais===pais);
+  if(dedicacion) filtradas=filtradas.filter(s=>s.perfiles?.dedicacion_ministerio===dedicacion);
+
+  const total=filtradas.length;
+  const monto=filtradas.filter(s=>['aprobada','procesada_q10','notificado','matriculado','aplicada'].includes(s.estado)).reduce((sum,s)=>sum+(s.monto_asignado||0),0);
+  const beneficiarios=new Set(filtradas.map(s=>s.estudiante_id)).size;
+  const mujeres=filtradas.filter(s=>s.perfiles?.sexo==='Mujer').length;
+
+  document.getElementById('rep-total').textContent=total;
+  document.getElementById('rep-monto').textContent='₡'+monto.toLocaleString('es-CR');
+  document.getElementById('rep-beneficiarios').textContent=beneficiarios;
+  document.getElementById('rep-mujeres').textContent=mujeres;
+
+  const tbody=document.getElementById('rep-tabla');
+  if(!filtradas.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados con los filtros seleccionados</td></tr>';return;}
+  tbody.innerHTML=filtradas.map(s=>`<tr>
+    <td><strong>${s.perfiles?.nombre_completo||'—'}</strong></td>
+    <td style="font-size:12px">${s.perfiles?.sexo||'—'}</td>
+    <td style="font-size:12px">${s.perfiles?.pais||'—'}</td>
+    <td style="font-size:12px">${(s.programa||'').replace('Bachillerato en ','Bac. ').replace('Maestría en ','Mae. ').replace('Diplomado en ','Dip. ')}</td>
+    <td style="font-size:12px">${s.periodo}</td>
+    <td style="font-size:12px">${s.perfiles?.ministerio||'—'}</td>
+    <td style="font-size:12px">${s.perfiles?.dedicacion_ministerio||'—'}</td>
+    <td style="font-size:12px">${s.fondos_beca?.nombre||'—'}</td>
+    <td style="font-weight:600;color:var(--success)">${s.monto_asignado?'₡'+s.monto_asignado.toLocaleString('es-CR'):'—'}</td>
+    <td>${badgeHtml(s.estado)}</td>
+  </tr>`).join('');
 }
 
 async function cargarEstudiantes() {

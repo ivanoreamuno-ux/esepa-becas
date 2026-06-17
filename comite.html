@@ -127,6 +127,7 @@
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:13px;opacity:0.85" id="nav-comite-nombre"></span>
       <button class="btn-link" onclick="showPage2('dashboard')" style="background:rgba(255,255,255,0.15);">📊 Dashboard</button>
+      <a href="admin.html" class="btn-link">← Admin</a>
       <button class="btn-link" onclick="comiteLogout()">Salir</button>
     </div>
   </nav>
@@ -275,7 +276,7 @@ async function comiteLogin(){
   currentComite=data.user;document.getElementById('nav-comite-nombre').textContent=p.nombre_completo;showApp();
 }
 
-async function comiteLogout(){await sb.auth.signOut();document.getElementById('page-app').style.display='none';document.getElementById('page-auth').style.display='block';}
+async function comiteLogout(){await sb.auth.signOut();window.location.href='login.html';}
 
 async function showApp(){
   document.getElementById('page-auth').style.display='none';
