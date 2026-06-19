@@ -317,7 +317,7 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Teléfono *</label><input type="tel" id="p-telefono"></div>
-          <div class="form-group"><label>Sexo *</label><select id="p-sexo"><option value="">Seleccionar</option><option>Hombre</option><option>Mujer</option><option>Prefiero no indicar</option></select></div>
+          <div class="form-group"><label>Sexo *</label><select id="p-sexo"><option value="">Seleccionar</option><option>Hombre</option><option>Mujer</option></select></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>País *</label><input type="text" id="p-pais" placeholder="Costa Rica"></div>
@@ -445,6 +445,10 @@ async function cargarPerfil(){
     document.getElementById('p-trabajo').value=String(data.tiene_trabajo_secular);
     if(data.tiene_trabajo_secular){document.getElementById('trabajo-desc-wrap').style.display='block';set('p-trabajo-desc',data.descripcion_trabajo_secular);}
   }
+  actualizarBarraCompletitud(data);
+}
+
+function actualizarBarraCompletitud(data){
   const llenos=CAMPOS_REQ.filter(c=>data[c]&&String(data[c]).trim()).length;
   const tieneTrabajo=data.tiene_trabajo_secular!==null&&data.tiene_trabajo_secular!==undefined&&data.tiene_trabajo_secular!=='';
   const pct=Math.round(((llenos+(tieneTrabajo?1:0))/(CAMPOS_REQ.length+1))*100);
@@ -471,14 +475,41 @@ async function guardarPerfil(){
     programa:document.getElementById('p-programa').value,
     cuatrimestre_ingreso:document.getElementById('p-ingreso').value.trim(),
   };
-  if(!updates.nombre_completo){showAlert('perfil','El nombre completo es requerido.','danger');return;}
+  // Validación de campos obligatorios antes de guardar
+  const faltantes=[];
+  if(!updates.nombre_completo)faltantes.push('Nombre completo');
+  if(!updates.numero_identificacion)faltantes.push('Número de identificación');
+  if(!updates.telefono)faltantes.push('Teléfono');
+  if(!updates.sexo)faltantes.push('Sexo');
+  if(!updates.pais)faltantes.push('País');
+  if(!updates.ciudad)faltantes.push('Ciudad');
+  if(!updates.iglesia)faltantes.push('Iglesia');
+  if(!updates.nombre_pastor)faltantes.push('Nombre del pastor o líder');
+  if(!updates.ministerio)faltantes.push('Ministerio');
+  if(!updates.dedicacion_ministerio)faltantes.push('Dedicación al ministerio');
+  if(tiene_trabajo==='')faltantes.push('¿Tiene trabajo secular?');
+  if(!updates.programa)faltantes.push('Programa de estudios');
+
+  if(faltantes.length){
+    showAlert('perfil','Faltan campos obligatorios: '+faltantes.join(', ')+'.','danger');
+    document.getElementById('alert-perfil').scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
   const btn=document.getElementById('btn-perfil');btn.textContent='Guardando...';btn.disabled=true;
   const{error}=await sb.from('perfiles').update(updates).eq('id',currentUser.id);
   btn.textContent='Guardar perfil';btn.disabled=false;
-  if(error){showAlert('perfil','Error: '+error.message,'danger');return;}
-  showAlert('perfil','✓ Perfil actualizado correctamente.','success');
+  if(error){
+    showAlert('perfil','Error: '+error.message,'danger');
+    document.getElementById('alert-perfil').scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   currentPerfil={...currentPerfil,...updates};
   document.getElementById('nav-nombre').textContent=updates.nombre_completo;
+  actualizarBarraCompletitud(currentPerfil);
+  showAlert('app','✓ Perfil actualizado correctamente.','success');
+  showTab('inicio');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function toggleTrabajo(){document.getElementById('trabajo-desc-wrap').style.display=document.getElementById('p-trabajo').value==='true'?'block':'none';}
