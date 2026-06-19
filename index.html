@@ -153,21 +153,24 @@
     <!-- INICIO -->
     <div id="tab-inicio" class="tab-content active">
       <div id="alert-app"></div>
+
+      <!-- TARJETA DE ESTADO ACTUAL — la pieza más importante de Inicio -->
+      <div id="tarjeta-estado-actual"></div>
+
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Total recibido</div><div class="stat-value" id="stat-total">₡0</div></div>
-        <div class="stat-card"><div class="stat-label">Solicitudes</div><div class="stat-value" id="stat-solicitudes">0</div></div>
-        <div class="stat-card"><div class="stat-label">Última solicitud</div><div id="stat-estado" style="margin-top:6px">—</div></div>
+        <div class="stat-card"><div class="stat-label">Solicitudes totales</div><div class="stat-value" id="stat-solicitudes">0</div></div>
+        <div class="stat-card"><div class="stat-label">Período activo</div><div id="stat-periodo-activo" style="margin-top:6px;font-size:13px;color:var(--muted)">—</div></div>
       </div>
-      <div class="card">
-        <div class="card-header"><span class="card-title">Solicitud más reciente</span></div>
-        <div id="solicitud-reciente"><div class="empty"><div class="empty-icon">📋</div><h3>Sin solicitudes aún</h3><p class="text-muted">Comenzá solicitando tu primera beca.</p><button class="btn btn-primary mt-2" onclick="showTab('solicitar')">Solicitar beca</button></div></div>
-      </div>
-      <div class="card"><div class="card-header"><span class="card-title">Historial reciente</span></div><div id="historial-mini"><p class="text-muted">Sin registros.</p></div></div>
+
+      <div class="card"><div class="card-header"><span class="card-title">Historial de solicitudes</span></div><div id="historial-mini"><p class="text-muted">Sin registros.</p></div></div>
     </div>
 
     <!-- SOLICITAR -->
     <div id="tab-solicitar" class="tab-content">
       <div id="alert-form"></div>
+
+      <!-- BLOQUEO: PERFIL INCOMPLETO -->
       <div id="bloqueo-perfil" style="display:none">
         <div class="perfil-bloqueado">
           <div style="font-size:24px;flex-shrink:0">⚠️</div>
@@ -178,6 +181,34 @@
           </div>
         </div>
       </div>
+
+      <!-- BLOQUEO: FUERA DE PLAZO -->
+      <div id="bloqueo-plazo" style="display:none">
+        <div class="perfil-bloqueado" style="background:var(--danger-bg);border-color:#fecaca">
+          <div style="font-size:24px;flex-shrink:0">🔒</div>
+          <div>
+            <h3 style="font-size:14px;font-weight:600;color:var(--danger);margin-bottom:4px" id="plazo-titulo">Fuera de plazo</h3>
+            <p style="font-size:13px;color:var(--danger)" id="plazo-mensaje">El período de solicitud de becas no está abierto actualmente.</p>
+            <p style="font-size:12px;color:var(--danger);margin-top:8px">Si tu situación requiere una excepción, contactá directamente a la administración de ESEPA.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUEO: YA TIENE SOLICITUD ACTIVA ESTE PERÍODO -->
+      <div id="bloqueo-ya-solicito" style="display:none">
+        <div class="perfil-bloqueado" style="background:var(--info-bg);border-color:#bfdbfe">
+          <div style="font-size:24px;flex-shrink:0">📋</div>
+          <div>
+            <h3 style="font-size:14px;font-weight:600;color:var(--info);margin-bottom:4px">Ya tenés una solicitud para este período</h3>
+            <p style="font-size:13px;color:var(--info)" id="ya-solicito-mensaje">Solo se permite una solicitud de beca por cuatrimestre. Podés editarla mientras el plazo esté abierto.</p>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <button class="btn btn-primary" style="padding:7px 16px;font-size:13px" onclick="cargarSolicitudParaEditar()" id="btn-editar-existente">Editar mi solicitud →</button>
+              <button class="btn btn-secondary" style="padding:7px 16px;font-size:13px" onclick="showTab('historial')">Ver mi solicitud</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="form-solicitud">
         <div class="requisito-beca">
           <h3>📖 Antes de solicitar</h3>
@@ -366,6 +397,9 @@ const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
 const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentUser=null,currentPerfil=null;
+let periodoActivo=null; // {periodo_academico, fecha_apertura, fecha_cierre}
+let solicitudActivaPeriodo=null; // solicitud existente del estudiante para el período activo
+let modoEdicion=false; // true si el formulario está editando una solicitud existente
 const CAMPOS_REQ=['nombre_completo','numero_identificacion','telefono','sexo','pais','ciudad','iglesia','nombre_pastor','ministerio','dedicacion_ministerio','programa'];
 const MIN_PALABRAS={sol_economica:80,sol_ministerio:80,sol_conexion:80,sol_vision:80,sol_compromisos:60,sol_referencia:40};
 
@@ -513,15 +547,114 @@ async function guardarPerfil(){
 
 function toggleTrabajo(){document.getElementById('trabajo-desc-wrap').style.display=document.getElementById('p-trabajo').value==='true'?'block':'none';}
 
+async function cargarPeriodoActivo(){
+  const{data}=await sb.from('periodos_solicitud').select('*').eq('activo',true).order('fecha_apertura',{ascending:false}).limit(1).single().catch(()=>({data:null}));
+  periodoActivo=data||null;
+  return periodoActivo;
+}
+
+function periodoEstaAbiertoHoy(p){
+  if(!p)return false;
+  const hoy=new Date().toISOString().slice(0,10);
+  return hoy>=p.fecha_apertura&&hoy<=p.fecha_cierre;
+}
+
+function fmtFechaLarga(d){
+  if(!d)return'—';
+  return new Date(d+'T00:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
+}
+
 async function cargarInicio(){
+  await cargarPeriodoActivo();
   const{data}=await sb.from('solicitudes').select('*,fondos_beca(nombre)').eq('estudiante_id',currentUser.id).order('creado_en',{ascending:false});
-  if(!data||!data.length)return;
-  const total=data.filter(s=>['aprobada','aplicada'].includes(s.estado)).reduce((sum,s)=>sum+(s.monto_asignado||0),0);
+  const solicitudes=data||[];
+  const total=solicitudes.filter(s=>['aprobada','procesada_q10','notificado','matriculado','aplicada'].includes(s.estado)).reduce((sum,s)=>sum+(s.monto_asignado||0),0);
   document.getElementById('stat-total').textContent='₡'+total.toLocaleString('es-CR');
-  document.getElementById('stat-solicitudes').textContent=data.length;
-  document.getElementById('stat-estado').innerHTML=badgeHtml(data[0].estado);
-  document.getElementById('solicitud-reciente').innerHTML=solicitudCard(data[0]);
-  document.getElementById('historial-mini').innerHTML=data.slice(0,3).map(s=>solicitudCard(s)).join('');
+  document.getElementById('stat-solicitudes').textContent=solicitudes.length;
+
+  // Identificar solicitud activa del período vigente
+  solicitudActivaPeriodo=periodoActivo?solicitudes.find(s=>s.periodo===periodoActivo.periodo_academico&&s.estado!=='rechazada')||null:null;
+
+  // Info del período activo en stat card
+  if(periodoActivo){
+    const abierto=periodoEstaAbiertoHoy(periodoActivo);
+    document.getElementById('stat-periodo-activo').innerHTML=
+      `<strong style="color:var(--brand)">${periodoActivo.periodo_academico}</strong><br>`+
+      (abierto?`<span style="color:var(--success)">Plazo abierto hasta ${fmtFechaLarga(periodoActivo.fecha_cierre)}</span>`
+              :`<span style="color:var(--danger)">Plazo cerrado</span>`);
+  } else {
+    document.getElementById('stat-periodo-activo').textContent='Sin período configurado';
+  }
+
+  // TARJETA DE ESTADO ACTUAL
+  const tarjeta=document.getElementById('tarjeta-estado-actual');
+  if(solicitudActivaPeriodo){
+    tarjeta.innerHTML=tarjetaEstadoHtml(solicitudActivaPeriodo);
+  } else if(solicitudes.length){
+    // No tiene solicitud para el período activo, pero sí tiene historial previo
+    tarjeta.innerHTML=`<div class="card" style="border-left:4px solid var(--brand)">
+      <div class="card-title" style="margin-bottom:0.5rem">📋 ${periodoActivo?periodoActivo.periodo_academico:'Nuevo período'}</div>
+      <p class="text-muted" style="margin-bottom:1rem">${periodoActivo&&periodoEstaAbiertoHoy(periodoActivo)?'Aún no has solicitado beca para este período. El plazo está abierto.':'Todavía no se ha abierto el período de solicitud, o ya no tenés una solicitud activa.'}</p>
+      <button class="btn btn-primary" onclick="showTab('solicitar')">Solicitar beca para este período</button>
+    </div>`;
+  } else {
+    tarjeta.innerHTML=`<div class="card">
+      <div class="empty"><div class="empty-icon">📋</div><h3>Sin solicitudes aún</h3><p class="text-muted">Comenzá solicitando tu primera beca.</p><button class="btn btn-primary mt-2" onclick="showTab('solicitar')">Solicitar beca</button></div>
+    </div>`;
+  }
+
+  document.getElementById('historial-mini').innerHTML=solicitudes.length?solicitudes.slice(0,5).map(s=>solicitudCard(s)).join(''):'<p class="text-muted">Sin registros.</p>';
+}
+
+function tarjetaEstadoHtml(s){
+  const c=s.fondos_beca?.nombre||null;
+  const estadosPositivos=['aprobada','procesada_q10','notificado','matriculado','aplicada'];
+  const esAprobada=estadosPositivos.includes(s.estado);
+  const esRechazada=s.estado==='rechazada';
+
+  if(esAprobada){
+    return `<div class="card" style="border-left:4px solid var(--success);background:linear-gradient(135deg,#f0fdf4,white)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+        <span class="card-title">🎉 ¡Tu beca fue aprobada!</span>${badgeHtml(s.estado)}
+      </div>
+      <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Período</span><strong>${s.periodo}</strong></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Programa</span><strong>${s.programa}</strong></div>
+        ${c?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Fondo</span><strong>${c}</strong></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span class="text-muted">Monto asignado</span><strong style="color:var(--success);font-size:18px">₡${(s.monto_asignado||0).toLocaleString('es-CR')}</strong></div>
+      </div>
+      ${s.comentario_comite_estudiante?`<div style="background:var(--brand-light);border-radius:8px;padding:1rem">
+        <div style="font-size:12px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px">💬 Mensaje del Comité de Becas</div>
+        <p style="font-size:13px;color:var(--text);font-style:italic">"${s.comentario_comite_estudiante}"</p>
+      </div>`:''}
+      ${s.estado==='notificado'||s.estado==='procesada_q10'?'<p class="text-muted" style="margin-top:0.75rem;font-size:12px">Tu beca está siendo procesada para aplicarse en tu matrícula.</p>':''}
+      ${s.estado==='matriculado'?'<p style="margin-top:0.75rem;font-size:12px;color:var(--success)">✓ Matrícula confirmada. ¡Que tengas un excelente cuatrimestre!</p>':''}
+    </div>`;
+  }
+
+  if(esRechazada){
+    return `<div class="card" style="border-left:4px solid var(--muted)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+        <span class="card-title">Solicitud no aprobada — ${s.periodo}</span>${badgeHtml(s.estado)}
+      </div>
+      <p class="text-muted">Tu solicitud para este período no fue aprobada en esta ocasión.</p>
+      ${s.comentario_comite_estudiante?`<div style="background:var(--bg);border-radius:8px;padding:1rem;margin-top:0.75rem">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px">Comentario del Comité</div>
+        <p style="font-size:13px;color:var(--text)">"${s.comentario_comite_estudiante}"</p>
+      </div>`:''}
+    </div>`;
+  }
+
+  // Pendiente o en revisión
+  const puedeEditar=periodoActivo&&periodoEstaAbiertoHoy(periodoActivo)&&s.periodo===periodoActivo.periodo_academico;
+  return `<div class="card" style="border-left:4px solid var(--warning)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+      <span class="card-title">Tu solicitud está ${s.estado==='pendiente'?'pendiente de revisión':'en revisión'}</span>${badgeHtml(s.estado)}
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">${s.programa} · ${s.periodo} · ${s.cantidad_cursos} curso${s.cantidad_cursos>1?'s':''}</div>
+    <p class="text-muted" style="margin-bottom:1rem">${s.estado==='pendiente'?'El Comité de Becas revisará tu solicitud pronto.':'El Comité de Becas está evaluando tu solicitud actualmente.'}</p>
+    ${puedeEditar?`<button class="btn btn-secondary" onclick="cargarSolicitudParaEditar()">✎ Editar mi solicitud</button>`:'<p style="font-size:12px;color:var(--muted)">El plazo de edición para este período ya cerró.</p>'}
+  </div>`;
 }
 
 async function generarCartaPersonalizada(){
@@ -616,6 +749,15 @@ async function subirCartaArchivo(solicitudId){
 
 async function enviarSolicitud(){
   if(!perfilCompleto(currentPerfil)){showAlert('form','Debés completar tu perfil antes de solicitar una beca.','danger');return;}
+
+  // Revalidar plazo justo antes de enviar (evita carreras si el plazo cerró mientras llenaba el form)
+  await cargarPeriodoActivo();
+  if(!modoEdicion&&(!periodoActivo||!periodoEstaAbiertoHoy(periodoActivo))){
+    showAlert('form','El período de solicitud ya no está abierto. No se pudo procesar tu solicitud.','danger');
+    evaluarAccesoSolicitar();
+    return;
+  }
+
   const campos=[
     {id:'sol-economica',min:80,label:'Situación económica'},
     {id:'sol-ministerio',min:80,label:'Ministerio actual'},
@@ -634,9 +776,10 @@ async function enviarSolicitud(){
   const tipo=prog.toLowerCase().includes('maestría')?'mae':'bach';
   const costo_total=TARIFAS.matricula[tipo]+(TARIFAS.curso[tipo]*cursos);
   const cartaRespuesta=document.getElementById('sol-carta-respuesta')?.value||'pendiente';
-  const btn=document.getElementById('btn-solicitud');btn.textContent='Enviando...';btn.disabled=true;
-  const{data:solData,error}=await sb.from('solicitudes').insert({
-    estudiante_id:currentUser.id,
+  const btn=document.getElementById('btn-solicitud');
+  btn.textContent=modoEdicion?'Actualizando...':'Enviando...';btn.disabled=true;
+
+  const payload={
     tipo_solicitud:document.getElementById('sol-tipo').value,
     periodo:document.getElementById('sol-periodo').value,
     programa:prog,cantidad_cursos:cursos,
@@ -649,22 +792,37 @@ async function enviarSolicitud(){
     costo_matricula:TARIFAS.matricula[tipo],costo_por_curso:TARIFAS.curso[tipo],
     costo_total_cursos:TARIFAS.curso[tipo]*cursos,costo_total,
     carta_pastoral_respuesta:cartaRespuesta,
-    carta_pastoral_subida_en:document.getElementById('sol-carta-file')?.files[0]?new Date().toISOString():null,
-    estado:'pendiente',decision_comite:'pendiente'
-  }).select().single();
-  if(error){btn.textContent='Enviar solicitud';btn.disabled=false;showAlert('form','Error: '+error.message,'danger');return;}
-  // Subir archivo de carta pastoral si existe
+  };
+
+  let solData,error;
+  if(modoEdicion&&solicitudActivaPeriodo){
+    ({data:solData,error}=await sb.from('solicitudes').update(payload).eq('id',solicitudActivaPeriodo.id).select().single());
+  } else {
+    payload.carta_pastoral_subida_en=document.getElementById('sol-carta-file')?.files[0]?new Date().toISOString():null;
+    payload.estudiante_id=currentUser.id;
+    payload.estado='pendiente';
+    payload.decision_comite='pendiente';
+    ({data:solData,error}=await sb.from('solicitudes').insert(payload).select().single());
+  }
+
+  if(error){
+    btn.textContent=modoEdicion?'Actualizar solicitud':'Enviar solicitud';btn.disabled=false;
+    if(error.code==='23505'){showAlert('form','Ya existe una solicitud para este período. Recargá la página.','danger');}
+    else{showAlert('form','Error: '+error.message,'danger');}
+    return;
+  }
+
   if(solData?.id&&document.getElementById('sol-carta-file')?.files[0]){
     btn.textContent='Subiendo carta...';
     const cartaUrl=await subirCartaArchivo(solData.id);
-    if(cartaUrl){
-      await sb.from('solicitudes').update({carta_pastoral_url:cartaUrl}).eq('id',solData.id);
-    }
+    if(cartaUrl){await sb.from('solicitudes').update({carta_pastoral_url:cartaUrl}).eq('id',solData.id);}
   }
-  btn.textContent='Enviar solicitud';btn.disabled=false;
-  showAlert('form','✓ Tu solicitud fue enviada. El Comité de Becas la revisará y recibirás notificación por correo.','success');
-  ['sol-economica','sol-ministerio','sol-conexion','sol-vision','sol-compromisos','sol-referencia'].forEach(id=>document.getElementById(id).value='');
+
+  btn.textContent=modoEdicion?'Actualizar solicitud':'Enviar solicitud';btn.disabled=false;
+  showAlert('form',modoEdicion?'✓ Tu solicitud fue actualizada correctamente.':'✓ Tu solicitud fue enviada. El Comité de Becas la revisará y recibirás notificación por correo.','success');
   if(document.getElementById('sol-carta-file'))document.getElementById('sol-carta-file').value='';
+  modoEdicion=false;
+  showTab('inicio');
   await cargarInicio();
 }
 
@@ -691,9 +849,94 @@ function showTab(tab){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='solicitar'){const ok=perfilCompleto(currentPerfil);document.getElementById('bloqueo-perfil').style.display=ok?'none':'block';document.getElementById('form-solicitud').style.display=ok?'block':'none';}
+  if(tab==='solicitar')evaluarAccesoSolicitar();
   if(tab==='historial')cargarHistorial();
 }
+
+function ocultarBloqueosSolicitar(){
+  ['bloqueo-perfil','bloqueo-plazo','bloqueo-ya-solicito','form-solicitud'].forEach(id=>document.getElementById(id).style.display='none');
+}
+
+async function evaluarAccesoSolicitar(){
+  ocultarBloqueosSolicitar();
+
+  // 1. Perfil incompleto — bloquea todo
+  if(!perfilCompleto(currentPerfil)){
+    document.getElementById('bloqueo-perfil').style.display='block';
+    return;
+  }
+
+  await cargarPeriodoActivo();
+
+  // 2. Sin período configurado o fuera de plazo
+  if(!periodoActivo||!periodoEstaAbiertoHoy(periodoActivo)){
+    document.getElementById('bloqueo-plazo').style.display='block';
+    document.getElementById('plazo-mensaje').textContent=periodoActivo
+      ?`El período de solicitud para ${periodoActivo.periodo_academico} cerró el ${fmtFechaLarga(periodoActivo.fecha_cierre)}. El Comité de Becas anunciará el próximo período de solicitud próximamente.`
+      :'Actualmente no hay un período de solicitud de becas abierto. El Comité de Becas anunciará las fechas próximamente.';
+    return;
+  }
+
+  // 3. Ya tiene solicitud activa para este período → modo edición, no creación
+  const{data:existentes}=await sb.from('solicitudes').select('*').eq('estudiante_id',currentUser.id).eq('periodo',periodoActivo.periodo_academico).neq('estado','rechazada');
+  if(existentes&&existentes.length){
+    solicitudActivaPeriodo=existentes[0];
+    document.getElementById('bloqueo-ya-solicito').style.display='block';
+    document.getElementById('ya-solicito-mensaje').textContent=`Ya enviaste tu solicitud para ${periodoActivo.periodo_academico}. Podés editarla hasta el ${fmtFechaLarga(periodoActivo.fecha_cierre)}.`;
+    return;
+  }
+
+  // 4. Todo en orden — mostrar formulario en modo creación
+  modoEdicion=false;
+  resetFormularioSolicitud();
+  document.getElementById('form-solicitud').style.display='block';
+  document.getElementById('btn-solicitud').textContent='Enviar solicitud';
+}
+
+function resetFormularioSolicitud(){
+  ['sol-economica','sol-ministerio','sol-conexion','sol-vision','sol-compromisos','sol-referencia'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('sol-tipo').value='primera_vez';
+  document.getElementById('sol-cursos').value='1';
+  document.getElementById('sol-carta-respuesta').value='pendiente';
+  if(periodoActivo){
+    const sel=document.getElementById('sol-periodo');
+    if(sel)for(const opt of sel.options)opt.selected=(opt.value===periodoActivo.periodo_academico);
+  }
+}
+
+async function cargarSolicitudParaEditar(){
+  if(!solicitudActivaPeriodo)return;
+  modoEdicion=true;
+  ocultarBloqueosSolicitar();
+  showTab('solicitar');
+  // Pequeño delay para que showTab no vuelva a evaluar y oculte el form
+  setTimeout(()=>{
+    const s=solicitudActivaPeriodo;
+    document.getElementById('sol-tipo').value=s.tipo_solicitud;
+    document.getElementById('sol-cursos').value=s.cantidad_cursos;
+    document.getElementById('sol-programa').value=s.programa;
+    const sel=document.getElementById('sol-periodo');
+    for(const opt of sel.options)opt.selected=(opt.value===s.periodo);
+    document.getElementById('sol-economica').value=s.resp_situacion_economica||'';
+    document.getElementById('sol-ministerio').value=s.resp_impacto_ministerio||'';
+    document.getElementById('sol-conexion').value=s.resp_impacto_ministerio||''; // conexión se guarda combinada históricamente
+    document.getElementById('sol-vision').value=s.resp_planes_futuros||'';
+    document.getElementById('sol-compromisos').value=s.resp_compromisos||'';
+    document.getElementById('sol-referencia').value=s.resp_referencia_pastoral||'';
+    document.getElementById('sol-carta-respuesta').value=s.carta_pastoral_respuesta||'pendiente';
+    ['count-1','count-2','count-3','count-4','count-5','count-6'].forEach((id,i)=>{
+      const mins=[80,80,80,80,60,40];
+      const fields=['sol-economica','sol-ministerio','sol-conexion','sol-vision','sol-compromisos','sol-referencia'];
+      const el=document.getElementById(fields[i]);
+      if(el)updateCount(el,id,mins[i]);
+    });
+    document.getElementById('form-solicitud').style.display='block';
+    document.getElementById('btn-solicitud').textContent='Actualizar solicitud';
+  },50);
+}
+
 function showPage(page){document.getElementById('page-auth').classList.toggle('active',page==='auth');document.getElementById('page-app').classList.toggle('active',page==='app');}
 function showAlert(zone,msg,type){const el=document.getElementById('alert-'+zone);if(!el)return;el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',7000);}
 init();

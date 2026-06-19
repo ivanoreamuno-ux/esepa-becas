@@ -141,6 +141,7 @@
       <div class="sidebar-item" onclick="showPage2('rechazadas')"><span>❌</span> Rechazadas</div>
       <div class="sidebar-section">Resumen</div>
       <div class="sidebar-item" onclick="showPage2('dashboard')"><span>📊</span> Dashboard</div>
+      <div class="sidebar-item" onclick="showPage2('periodos')"><span>📅</span> Períodos de solicitud</div>
     </div>
     <div class="main">
       <div id="alert-main"></div>
@@ -216,6 +217,19 @@
         </div>
       </div>
 
+      <!-- PERÍODOS DE SOLICITUD -->
+      <div id="p-periodos" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div>
+            <div class="page-title">Períodos de solicitud</div>
+            <div class="page-sub">Definí cuándo los estudiantes pueden enviar solicitudes de beca. Solo se permite un período abierto por cuatrimestre.</div>
+          </div>
+          <button class="btn btn-primary" onclick="abrirNuevoPeriodo()">+ Nuevo período</button>
+        </div>
+        <div id="alert-periodos"></div>
+        <div id="lista-periodos"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
+      </div>
+
       <!-- LISTAS DE SOLICITUDES -->
       <div id="p-pendientes" class="page">
         <div class="page-title">Solicitudes por revisar</div>
@@ -244,6 +258,48 @@
         <div id="lista-rechazadas"></div>
         <div id="detail-rechazadas" class="detail-view"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PERÍODO DE SOLICITUD -->
+<div class="modal-overlay" id="modal-periodo">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title" id="mp2-titulo">Nuevo período de solicitud</span>
+      <button class="close-btn" onclick="closeModal('modal-periodo')">×</button>
+    </div>
+    <div id="alert-modal-periodo"></div>
+    <div class="form-group">
+      <label>Período académico</label>
+      <select id="periodo-academico" style="width:100%">
+        <option value="1C 2026">1er Cuatrimestre 2026</option>
+        <option value="2C 2026">2do Cuatrimestre 2026</option>
+        <option value="3C 2026">3er Cuatrimestre 2026</option>
+        <option value="1C 2027">1er Cuatrimestre 2027</option>
+        <option value="2C 2027">2do Cuatrimestre 2027</option>
+        <option value="3C 2027">3er Cuatrimestre 2027</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="form-group">
+        <label>Fecha de apertura</label>
+        <input type="date" id="periodo-apertura" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Fecha de cierre</label>
+        <input type="date" id="periodo-cierre" style="width:100%">
+      </div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="periodo-activo" checked style="width:auto">
+        <span style="text-transform:none;font-weight:500;color:var(--text)">Período activo (visible para estudiantes)</span>
+      </label>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-periodo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPeriodo()" id="btn-guardar-periodo">Guardar período</button>
     </div>
   </div>
 </div>
@@ -375,12 +431,13 @@ async function cargarDashboard(){
 function showPage2(page){
   paginaActual=page;
   document.querySelectorAll('.sidebar-item').forEach((el,i)=>{
-    const pages=['pendientes','en_revision','aprobadas','rechazadas','dashboard'];
+    const pages=['pendientes','en_revision','aprobadas','rechazadas','dashboard','periodos'];
     el.classList.toggle('active',pages[i]===page);
   });
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('p-'+page).classList.add('active');
-  if(page!=='dashboard')renderLista(page);
+  if(page==='periodos')renderPeriodos();
+  else if(page!=='dashboard')renderLista(page);
 }
 
 function renderLista(estado){
@@ -490,6 +547,10 @@ function panelDecision(s){
     '<div class="form-group"><label>Notas del Comité (internas — no visibles para el estudiante)</label>'+
       '<textarea id="inp-notas-'+s.id+'" rows="4" style="width:100%" placeholder="Documentá el análisis del comité: fortalezas de la solicitud, preocupaciones, condiciones de la aprobación, motivos del rechazo, etc."></textarea>'+
     '</div>'+
+    '<div class="form-group"><label>Mensaje para el estudiante (sí visible — aparecerá en su portal)</label>'+
+      '<textarea id="inp-comentario-est-'+s.id+'" rows="3" style="width:100%" placeholder="Ej: ¡Felicidades! Valoramos tu compromiso ministerial. Que este apoyo sea de bendición en tu formación."></textarea>'+
+      '<p style="font-size:11px;color:var(--muted);margin-top:4px">Este mensaje lo verá el estudiante directamente en su pantalla de inicio. Usalo para animarlo o explicar brevemente la decisión.</p>'+
+    '</div>'+
     '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:1rem">'+
       '<button class="btn btn-danger" onclick="tomarDecision(\''+s.id+'\',\'rechazada\')">✕ Rechazar solicitud</button>'+
       '<button class="btn btn-success" onclick="tomarDecision(\''+s.id+'\',\'aprobada\')">✓ Aprobar solicitud</button>'+
@@ -503,7 +564,8 @@ function panelDecisionTomada(s){
     '<div style="font-size:32px;margin-bottom:0.5rem">'+(esAprobada?'✅':'❌')+'</div>'+
     '<div style="font-size:16px;font-weight:700;color:'+(esAprobada?'var(--success)':'var(--danger)')+'">Solicitud '+(esAprobada?'aprobada':'rechazada')+'</div>'+
     (s.monto_asignado?'<div style="font-size:14px;margin-top:4px">Monto asignado: <strong>₡'+s.monto_asignado.toLocaleString('es-CR')+'</strong></div>':'')+
-    (s.notas_comite?'<div style="font-size:13px;color:var(--muted);margin-top:12px;text-align:left;background:var(--bg);padding:1rem;border-radius:8px"><strong>Notas del Comité:</strong><br>'+s.notas_comite+'</div>':'')+
+    (s.notas_comite?'<div style="font-size:13px;color:var(--muted);margin-top:12px;text-align:left;background:var(--bg);padding:1rem;border-radius:8px"><strong>Notas internas:</strong><br>'+s.notas_comite+'</div>':'')+
+    (s.comentario_comite_estudiante?'<div style="font-size:13px;color:var(--navy);margin-top:8px;text-align:left;background:var(--brand-light);padding:1rem;border-radius:8px"><strong>Mensaje visible para el estudiante:</strong><br>"'+s.comentario_comite_estudiante+'"</div>':'')+
   '</div>';
 }
 
@@ -511,6 +573,7 @@ async function tomarDecision(id,decision){
   const fondo=document.getElementById('sel-fondo-'+id)?.value||null;
   const monto=parseFloat(document.getElementById('inp-monto-'+id)?.value)||null;
   const notas=document.getElementById('inp-notas-'+id)?.value.trim()||null;
+  const comentarioEst=document.getElementById('inp-comentario-est-'+id)?.value.trim()||null;
   const alertEl=document.getElementById('alert-decision-'+id);
 
   if(decision==='aprobada'&&!notas){alertEl.innerHTML='<div class="alert alert-danger">Agregá notas que documenten la decisión de aprobación.</div>';return;}
@@ -526,6 +589,7 @@ async function tomarDecision(id,decision){
     estado:decision,decision_comite:decision,
     fondo_id:fondo||null,monto_asignado:monto||null,
     notas_comite:notas,notas_admin:notas,
+    comentario_comite_estudiante:comentarioEst,
     revisado_por:currentComite.id,revisado_en:new Date().toISOString()
   };
 
@@ -536,6 +600,79 @@ async function tomarDecision(id,decision){
   await cargarTodas();
   cargarDashboard();
   volverLista(paginaActual);
+}
+
+// ─── PERÍODOS DE SOLICITUD ──────────────────────────────────────────────────
+let periodoEditando=null;
+
+async function renderPeriodos(){
+  const{data}=await sb.from('periodos_solicitud').select('*').order('fecha_apertura',{ascending:false});
+  const c=document.getElementById('lista-periodos');
+  if(!data||!data.length){c.innerHTML='<div class="empty"><div class="empty-icon">📅</div><h3>Sin períodos configurados</h3><p style="color:var(--muted)">Creá el primer período para habilitar las solicitudes de los estudiantes.</p></div>';return;}
+  const hoy=new Date().toISOString().slice(0,10);
+  c.innerHTML=data.map(p=>{
+    const abierto=p.activo&&hoy>=p.fecha_apertura&&hoy<=p.fecha_cierre;
+    const vencido=hoy>p.fecha_cierre;
+    const estadoTxt=abierto?'<span style="color:var(--success);font-weight:600">● Abierto ahora</span>':vencido?'<span style="color:var(--muted)">○ Cerrado</span>':'<span style="color:var(--warning);font-weight:600">○ Próximo</span>';
+    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--brand)">${p.periodo_academico} ${!p.activo?'<span style="font-size:11px;color:var(--muted);font-weight:400">(inactivo)</span>':''}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">Del ${fmtDateLong(p.fecha_apertura)} al ${fmtDateLong(p.fecha_cierre)}</div>
+        <div style="font-size:12px;margin-top:4px">${estadoTxt}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="editarPeriodo('${p.id}')">Editar</button>
+    </div>`;
+  }).join('');
+}
+
+function fmtDateLong(d){return new Date(d+'T00:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});}
+
+function abrirNuevoPeriodo(){
+  periodoEditando=null;
+  document.getElementById('mp2-titulo').textContent='Nuevo período de solicitud';
+  document.getElementById('periodo-academico').value='';
+  document.getElementById('periodo-apertura').value='';
+  document.getElementById('periodo-cierre').value='';
+  document.getElementById('periodo-activo').checked=true;
+  document.getElementById('alert-modal-periodo').innerHTML='';
+  document.getElementById('modal-periodo').classList.add('open');
+}
+
+async function editarPeriodo(id){
+  const{data}=await sb.from('periodos_solicitud').select('*').eq('id',id).single();
+  if(!data)return;
+  periodoEditando=data;
+  document.getElementById('mp2-titulo').textContent='Editar período';
+  document.getElementById('periodo-academico').value=data.periodo_academico;
+  document.getElementById('periodo-apertura').value=data.fecha_apertura;
+  document.getElementById('periodo-cierre').value=data.fecha_cierre;
+  document.getElementById('periodo-activo').checked=data.activo;
+  document.getElementById('alert-modal-periodo').innerHTML='';
+  document.getElementById('modal-periodo').classList.add('open');
+}
+
+async function guardarPeriodo(){
+  const periodo_academico=document.getElementById('periodo-academico').value;
+  const fecha_apertura=document.getElementById('periodo-apertura').value;
+  const fecha_cierre=document.getElementById('periodo-cierre').value;
+  const activo=document.getElementById('periodo-activo').checked;
+  const alertEl=document.getElementById('alert-modal-periodo');
+
+  if(!periodo_academico||!fecha_apertura||!fecha_cierre){alertEl.innerHTML='<div class="alert alert-danger">Completá todos los campos.</div>';return;}
+  if(fecha_cierre<=fecha_apertura){alertEl.innerHTML='<div class="alert alert-danger">La fecha de cierre debe ser posterior a la de apertura.</div>';return;}
+
+  const btn=document.getElementById('btn-guardar-periodo');btn.textContent='Guardando...';btn.disabled=true;
+  let error;
+  if(periodoEditando){
+    ({error}=await sb.from('periodos_solicitud').update({periodo_academico,fecha_apertura,fecha_cierre,activo,actualizado_en:new Date().toISOString()}).eq('id',periodoEditando.id));
+  } else {
+    ({error}=await sb.from('periodos_solicitud').insert({periodo_academico,fecha_apertura,fecha_cierre,activo,creado_por:currentComite.id}));
+  }
+  btn.textContent='Guardar período';btn.disabled=false;
+  if(error){alertEl.innerHTML='<div class="alert alert-danger">'+(error.code==='23505'?'Ya existe un período configurado con ese nombre académico.':error.message)+'</div>';return;}
+  closeModal('modal-periodo');
+  showAlert('main','✓ Período guardado correctamente.','success');
+  renderPeriodos();
 }
 
 function volverLista(estado){
