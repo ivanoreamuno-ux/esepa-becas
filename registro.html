@@ -108,6 +108,7 @@
   <button class="tab" onclick="showTab('matricula')">Matrícula <span class="tab-badge" id="badge-matricula" style="background:var(--navy)">0</span></button>
   <button class="tab" onclick="showTab('plantillas')">Plantillas de correo</button>
   <button class="tab" onclick="showTab('reporte')">Reporte</button>
+  <button class="tab" onclick="showTab('excepcion')">+ Solicitud por excepción</button>
 </div>
 
 <div class="main">
@@ -165,6 +166,90 @@
       </div>
       <table><thead><tr><th>Estudiante</th><th>Programa</th><th>Período</th><th>Monto</th><th>Estado</th><th>Q10</th><th>Notificado</th><th>Matrícula</th><th></th></tr></thead>
       <tbody id="rep-tabla"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- EXCEPCIÓN: CREAR SOLICITUD MANUAL -->
+  <div id="tab-excepcion" class="page">
+    <div class="page-title">Solicitud de beca por excepción</div>
+    <div class="page-sub">Para registrar la solicitud de un estudiante que, por una situación particular autorizada, no pudo enviarla por el sistema dentro del plazo regular.</div>
+
+    <div class="alert alert-warning" style="margin-bottom:1.25rem">
+      ⚠ Esta solicitud quedará marcada como creada por excepción y por Registro/Admin, visible para el Comité de Becas durante la evaluación. Solo se permite una solicitud activa por estudiante por período — si ya existe una, el sistema lo indicará.
+    </div>
+
+    <div id="alert-excepcion"></div>
+
+    <div class="card">
+      <div class="card-title">1. Seleccionar estudiante</div>
+      <div class="form-group">
+        <label>Buscar estudiante por nombre o correo</label>
+        <input type="text" id="exc-buscar-estudiante" placeholder="Escribí para buscar..." oninput="buscarEstudiantesExcepcion()" style="width:100%">
+        <div id="exc-resultados-estudiante" style="margin-top:8px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none"></div>
+      </div>
+      <div id="exc-estudiante-seleccionado" style="display:none;background:var(--navy-light);border-radius:8px;padding:1rem;margin-top:0.75rem">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-weight:700;color:var(--navy)" id="exc-nombre-sel"></div>
+            <div style="font-size:12px;color:var(--muted)" id="exc-detalle-sel"></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="quitarEstudianteExcepcion()">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="exc-formulario-completo" style="display:none">
+      <div class="card">
+        <div class="card-title">2. Información básica</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de solicitud</label>
+            <select id="exc-tipo" style="width:100%"><option value="primera_vez">Primera vez</option><option value="renovacion">Renovación</option></select>
+          </div>
+          <div class="form-group">
+            <label>Período académico</label>
+            <select id="exc-periodo" style="width:100%">
+              <option value="1C 2026">1C 2026</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Programa de estudios</label>
+            <select id="exc-programa" style="width:100%">
+              <option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option>
+              <option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option>
+              <option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cantidad de cursos</label>
+            <input type="number" id="exc-cursos" min="1" max="4" value="1" style="width:100%">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">3. Respuestas ministeriales</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Transcribí o resumí la información proporcionada por el estudiante. Mantené los mínimos de palabras del proceso regular cuando sea posible.</p>
+        <div class="form-group"><label>Situación económica actual</label><textarea id="exc-economica" rows="4" style="width:100%"></textarea></div>
+        <div class="form-group"><label>Ministerio actual</label><textarea id="exc-ministerio" rows="4" style="width:100%"></textarea></div>
+        <div class="form-group"><label>Conexión estudios-ministerio</label><textarea id="exc-conexion" rows="4" style="width:100%"></textarea></div>
+        <div class="form-group"><label>Visión y planes a 3 años</label><textarea id="exc-vision" rows="4" style="width:100%"></textarea></div>
+        <div class="form-group"><label>Compromisos</label><textarea id="exc-compromisos" rows="3" style="width:100%"></textarea></div>
+        <div class="form-group"><label>Referencia pastoral</label><textarea id="exc-referencia" rows="3" style="width:100%"></textarea></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">4. Justificación de la excepción</div>
+        <div class="form-group">
+          <label>Motivo por el que se registra fuera del proceso regular (obligatorio)</label>
+          <textarea id="exc-justificacion" rows="3" style="width:100%" placeholder="Ej: Estudiante sin acceso a internet durante el período de apertura. Autorizado por el Director Ejecutivo el [fecha]."></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+          <button class="btn btn-primary" onclick="crearSolicitudExcepcion()" id="btn-crear-excepcion">Registrar solicitud por excepción</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -530,9 +615,118 @@ function dr(l,v){return '<div class="detail-row"><span class="dl">'+l+'</span><s
 function bdg(e){return '<span class="badge badge-'+e+'">'+(ESTADOS[e]||e)+'</span>';}
 function abrevProg(p){return(p||'').replace('Bachillerato en ','Bac. ').replace('Maestria en ','Mae. ').replace('Diplomado en ','Dip. ');}
 function fmtD(d){return d?new Date(d).toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';}
-function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['cola','notificaciones','matricula','plantillas','reporte'][i]===t));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='notificaciones')poblarPl('sel-plantilla-masiva');}
+function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['cola','notificaciones','matricula','plantillas','reporte','excepcion'][i]===t));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='notificaciones')poblarPl('sel-plantilla-masiva');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function showAlert(msg,type='success'){const el=document.getElementById('alert-main');el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',6000);}
+
+// ─── SOLICITUD POR EXCEPCIÓN ─────────────────────────────────────────────────
+let estudianteSeleccionadoExc=null;
+let busquedaExcTimeout=null;
+
+function buscarEstudiantesExcepcion(){
+  clearTimeout(busquedaExcTimeout);
+  const q=document.getElementById('exc-buscar-estudiante').value.trim();
+  const resultados=document.getElementById('exc-resultados-estudiante');
+  if(q.length<2){resultados.style.display='none';resultados.innerHTML='';return;}
+  busquedaExcTimeout=setTimeout(async()=>{
+    const{data}=await sb.from('perfiles').select('id,nombre_completo,iglesia,programa').eq('rol','estudiante').ilike('nombre_completo','%'+q+'%').limit(8);
+    if(!data||!data.length){resultados.innerHTML='<div style="padding:10px;font-size:13px;color:var(--muted)">Sin resultados.</div>';resultados.style.display='block';return;}
+    resultados.innerHTML=data.map(p=>'<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmouseover="this.style.background=\'var(--navy-light)\'" onmouseout="this.style.background=\'\'" onclick=\'seleccionarEstudianteExc('+JSON.stringify(JSON.stringify(p))+')\'><strong>'+p.nombre_completo+'</strong><br><span style="color:var(--muted);font-size:11px">'+(p.iglesia||'Sin iglesia registrada')+' · '+(p.programa||'Sin programa')+'</span></div>').join('');
+    resultados.style.display='block';
+  },300);
+}
+
+function seleccionarEstudianteExc(jsonStr){
+  const p=JSON.parse(jsonStr);
+  estudianteSeleccionadoExc=p;
+  document.getElementById('exc-resultados-estudiante').style.display='none';
+  document.getElementById('exc-buscar-estudiante').value='';
+  document.getElementById('exc-nombre-sel').textContent=p.nombre_completo;
+  document.getElementById('exc-detalle-sel').textContent=(p.iglesia||'Sin iglesia')+' · '+(p.programa||'Sin programa');
+  document.getElementById('exc-estudiante-seleccionado').style.display='block';
+  document.getElementById('exc-formulario-completo').style.display='block';
+  if(p.programa){
+    const sel=document.getElementById('exc-programa');
+    for(const opt of sel.options)if(opt.value===p.programa)opt.selected=true;
+  }
+  document.getElementById('alert-excepcion').innerHTML='';
+}
+
+function quitarEstudianteExcepcion(){
+  estudianteSeleccionadoExc=null;
+  document.getElementById('exc-estudiante-seleccionado').style.display='none';
+  document.getElementById('exc-formulario-completo').style.display='none';
+}
+
+async function crearSolicitudExcepcion(){
+  const alertEl=document.getElementById('alert-excepcion');
+  if(!estudianteSeleccionadoExc){alertEl.innerHTML='<div class="alert alert-danger">Seleccioná un estudiante primero.</div>';return;}
+
+  const periodo=document.getElementById('exc-periodo').value;
+  const programa=document.getElementById('exc-programa').value;
+  const cursos=parseInt(document.getElementById('exc-cursos').value)||1;
+  const justificacion=document.getElementById('exc-justificacion').value.trim();
+  const economica=document.getElementById('exc-economica').value.trim();
+  const ministerio=document.getElementById('exc-ministerio').value.trim();
+  const vision=document.getElementById('exc-vision').value.trim();
+  const compromisos=document.getElementById('exc-compromisos').value.trim();
+  const referencia=document.getElementById('exc-referencia').value.trim();
+
+  if(!justificacion){alertEl.innerHTML='<div class="alert alert-danger">La justificación de la excepción es obligatoria.</div>';return;}
+  if(!economica||!ministerio){alertEl.innerHTML='<div class="alert alert-danger">Completá al menos la situación económica y el ministerio del estudiante.</div>';return;}
+
+  const{data:existentes}=await sb.from('solicitudes').select('id,estado').eq('estudiante_id',estudianteSeleccionadoExc.id).eq('periodo',periodo).neq('estado','rechazada');
+  if(existentes&&existentes.length){
+    alertEl.innerHTML='<div class="alert alert-danger">Este estudiante ya tiene una solicitud activa para '+periodo+' (estado: '+(ESTADOS[existentes[0].estado]||existentes[0].estado)+'). No se puede crear otra.</div>';
+    return;
+  }
+
+  const TARIFAS={matricula:{bach:42500,mae:46500},curso:{bach:63000,mae:100800}};
+  const tipo=programa.toLowerCase().includes('maestría')?'mae':'bach';
+  const costo_total=TARIFAS.matricula[tipo]+(TARIFAS.curso[tipo]*cursos);
+
+  const btn=document.getElementById('btn-crear-excepcion');btn.textContent='Registrando...';btn.disabled=true;
+
+  const{error}=await sb.from('solicitudes').insert({
+    estudiante_id:estudianteSeleccionadoExc.id,
+    tipo_solicitud:document.getElementById('exc-tipo').value,
+    periodo,programa,cantidad_cursos:cursos,
+    motivo:economica,
+    resp_situacion_economica:economica,
+    resp_impacto_ministerio:ministerio,
+    resp_planes_futuros:vision,
+    resp_compromisos:compromisos,
+    resp_referencia_pastoral:referencia,
+    costo_matricula:TARIFAS.matricula[tipo],costo_por_curso:TARIFAS.curso[tipo],
+    costo_total_cursos:TARIFAS.curso[tipo]*cursos,costo_total,
+    carta_pastoral_respuesta:'pendiente',
+    estado:'pendiente',decision_comite:'pendiente',
+    creada_por_excepcion:true,
+    creada_por_staff:currentUser.id,
+    es_tardia:true,
+    notas_registro:'EXCEPCIÓN registrada por Registro/Admin. Justificación: '+justificacion
+  });
+
+  btn.textContent='Registrar solicitud por excepción';btn.disabled=false;
+
+  if(error){alertEl.innerHTML='<div class="alert alert-danger">Error: '+error.message+'</div>';return;}
+
+  const{data:nuevaSol}=await sb.from('solicitudes').select('id').eq('estudiante_id',estudianteSeleccionadoExc.id).eq('periodo',periodo).order('creado_en',{ascending:false}).limit(1).single();
+  if(nuevaSol){
+    await sb.from('alertas_comite').insert({
+      solicitud_id:nuevaSol.id,
+      tipo:'solicitud_por_excepcion',
+      mensaje:'Se registró una solicitud por excepción para '+estudianteSeleccionadoExc.nombre_completo+' (período '+periodo+'). Justificación: '+justificacion,
+      creado_por:currentUser.id
+    });
+  }
+
+  showAlert('Solicitud por excepción registrada correctamente. El Comité de Becas fue notificado.','success');
+  quitarEstudianteExcepcion();
+  document.getElementById('exc-justificacion').value='';
+  ['exc-economica','exc-ministerio','exc-conexion','exc-vision','exc-compromisos','exc-referencia'].forEach(id=>document.getElementById(id).value='');
+  await cargarTodo();
+}
 
 init();
 </script>

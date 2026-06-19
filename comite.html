@@ -477,6 +477,7 @@ async function abrirDetalle(id,estado){
 
   detail.innerHTML=
     '<button class="back-btn" onclick="volverLista(\''+estado+'\')">&larr; Volver a la lista</button>'+
+    (s.creada_por_excepcion?'<div class="alert alert-warning" style="margin-bottom:1rem">⚠ Esta solicitud fue registrada por Registro/Admin como <strong>excepción fuera de plazo</strong>. '+(s.notas_registro?s.notas_registro.replace('EXCEPCIÓN registrada por Registro/Admin. ',''):'')+'</div>':'')+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px">'+
       '<div><div style="font-size:20px;font-weight:700;color:var(--brand)">'+(p?.nombre_completo||'—')+'</div>'+
       '<div style="font-size:13px;color:var(--muted);margin-top:2px">'+s.programa+' · '+s.periodo+' · '+(s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación')+'</div></div>'+
