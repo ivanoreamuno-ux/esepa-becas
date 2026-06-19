@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Becas ESEPA — Portal del Estudiante</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.6/dist/pizzip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.47.3/build/docxtemplater.min.js"></script>
 <style>
   :root {
     --brand:#2c4a7c; --brand-dark:#1e3560; --brand-mid:#4a6fa5; --brand-light:#eef2f9;
@@ -266,11 +268,8 @@
             <button class="btn" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.4)" onclick="generarCartaPersonalizada()">
               📄 Generar mi carta personalizada
             </button>
-            <a href="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Carta_Pastoral_ESEPA_PLANTILLA.docx" download class="btn" style="background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.3);text-decoration:none;font-size:13px">
-              ⬇ Descargar plantilla en blanco
-            </a>
           </div>
-          <p style="font-size:12px;opacity:0.75">Tu carta personalizada se generará con tu nombre, el nombre de tu pastor y tu iglesia, listos para imprimir y presentar.</p>
+          <p style="font-size:12px;opacity:0.75">Tu carta se genera automáticamente con tu nombre, el de tu pastor, tu iglesia y tu programa — lista para imprimir y presentar. Necesitás tener el perfil completo primero.</p>
         </div>
 
         <div class="pregunta-ministerial" style="border-left:4px solid var(--orange)">
@@ -525,35 +524,81 @@ async function cargarInicio(){
   document.getElementById('historial-mini').innerHTML=data.slice(0,3).map(s=>solicitudCard(s)).join('');
 }
 
-function generarCartaPersonalizada(){
+async function generarCartaPersonalizada(){
   if(!currentPerfil){showAlert('form','Completá tu perfil primero.','danger');return;}
-  const nombre=currentPerfil.nombre_completo||'[NOMBRE DEL ESTUDIANTE]';
-  const pastor=currentPerfil.nombre_pastor||'[NOMBRE DEL PASTOR]';
-  const iglesia=currentPerfil.iglesia||'[NOMBRE DE LA IGLESIA]';
-  const programa=document.getElementById('sol-programa')?.value||currentPerfil.programa||'[PROGRAMA DE ESTUDIOS]';
+  if(!currentPerfil.nombre_pastor||!currentPerfil.iglesia){
+    showAlert('form','Tu perfil debe tener el nombre del pastor y de la iglesia antes de generar la carta. Completalo en la pestaña "Mi perfil".','danger');
+    return;
+  }
+
+  const nombre=currentPerfil.nombre_completo||'';
+  const pastor=currentPerfil.nombre_pastor||'';
+  const iglesia=currentPerfil.iglesia||'';
+  const programa=document.getElementById('sol-programa')?.value||currentPerfil.programa||'';
+  const ciudadPais=[currentPerfil.ciudad,currentPerfil.pais].filter(Boolean).join(', ');
   const hoy=new Date().toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
-  // Crear URL de descarga personalizada con parámetros
-  const params=new URLSearchParams({nombre,pastor,iglesia,programa,fecha:hoy});
-  // Abrir modal de vista previa
-  const modal=document.createElement('div');
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
-  modal.innerHTML=`<div style="background:white;border-radius:12px;padding:1.5rem;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-    <div style="font-size:16px;font-weight:700;color:var(--brand);margin-bottom:1rem">📜 Tu carta personalizada</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">La carta se generará con los siguientes datos de tu perfil:</p>
-    <div style="background:var(--bg);border-radius:8px;padding:1rem;font-size:13px;margin-bottom:1rem">
-      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Estudiante:</strong> ${nombre}</div>
-      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Pastor / Líder:</strong> ${pastor}</div>
-      <div style="margin-bottom:6px"><strong style="color:var(--navy)">Iglesia:</strong> ${iglesia}</div>
-      <div><strong style="color:var(--navy)">Programa:</strong> ${programa}</div>
-    </div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Descargá la plantilla, reemplazá los campos marcados con corchetes [ASÍ] con tu información, imprimila y presentala a tu pastor para su firma.</p>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid #dce3ef;border-radius:8px;background:white;cursor:pointer;font-size:13px">Cerrar</button>
-      <a href="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Carta_Pastoral_ESEPA_PLANTILLA.docx" download="Carta_Pastoral_ESEPA_${nombre.replace(/ /g,'_')}.docx" style="padding:8px 16px;background:linear-gradient(135deg,#C1522A,#d4693d);color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">⬇ Descargar carta</a>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+
+  // Modal de carga
+  const loadingModal=document.createElement('div');
+  loadingModal.id='carta-loading-modal';
+  loadingModal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  loadingModal.innerHTML=`<div style="background:white;border-radius:12px;padding:2rem;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="width:36px;height:36px;border:3px solid #dce3ef;border-top-color:#2c4a7c;border-radius:50%;margin:0 auto 1rem;animation:spin 0.8s linear infinite"></div>
+    <p style="font-size:14px;color:#5a6478">Generando tu carta personalizada...</p>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+  document.body.appendChild(loadingModal);
+
+  try{
+    const url='https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Carta_Pastoral_ESEPA_PLANTILLA.docx';
+    const response=await fetch(url);
+    if(!response.ok)throw new Error('No se pudo descargar la plantilla.');
+    const arrayBuffer=await response.arrayBuffer();
+
+    const zip=new PizZip(arrayBuffer);
+    const doc=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true});
+
+    doc.render({
+      nombre,
+      pastor,
+      iglesia,
+      programa,
+      fecha:hoy,
+      ciudad_pais:ciudadPais||'_______________'
+    });
+
+    const outputBlob=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+
+    const downloadUrl=URL.createObjectURL(outputBlob);
+    const fileName='Carta_Pastoral_ESEPA_'+nombre.replace(/[^a-zA-Z0-9]/g,'_')+'.docx';
+
+    loadingModal.remove();
+
+    // Modal de confirmación con descarga lista
+    const modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+    modal.innerHTML=`<div style="background:white;border-radius:12px;padding:1.5rem;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+      <div style="font-size:32px;text-align:center;margin-bottom:0.5rem">✅</div>
+      <div style="font-size:16px;font-weight:700;color:var(--brand);margin-bottom:1rem;text-align:center">Tu carta está lista</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;text-align:center">Generada automáticamente con tus datos. Ya podés descargarla, imprimirla y llevarla a tu pastor para que la firme.</p>
+      <div style="background:var(--bg);border-radius:8px;padding:1rem;font-size:13px;margin-bottom:1.25rem">
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Estudiante:</strong> ${nombre}</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Pastor / Líder:</strong> ${pastor}</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Iglesia:</strong> ${iglesia}</div>
+        <div><strong style="color:var(--brand)">Programa:</strong> ${programa}</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid #dce3ef;border-radius:8px;background:white;cursor:pointer;font-size:13px">Cerrar</button>
+        <a href="${downloadUrl}" download="${fileName}" style="padding:8px 16px;background:linear-gradient(135deg,#C1522A,#d4693d);color:white;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">⬇ Descargar mi carta</a>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+
+  }catch(err){
+    loadingModal.remove();
+    showAlert('form','No se pudo generar la carta: '+err.message+'. Intentá de nuevo o contactá a administración.','danger');
+  }
 }
 
 async function subirCartaArchivo(solicitudId){
