@@ -185,25 +185,45 @@
       </div>
       <div id="adm-reportes" class="page">
         <div class="page-title">Reportes</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem">
+        <div class="page-sub">Los reportes se organizan por período. Por defecto se muestra el período activo.</div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem">
+          <select id="rep-periodo" onchange="cambiarPeriodoReporte()" style="font-weight:600;color:var(--brand)"><option value="">Cargando períodos...</option></select>
           <select id="rep-estado" onchange="cargarReportes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="procesada_q10">En Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
-          <select id="rep-periodo" onchange="cargarReportes()"><option value="">Todos los períodos</option><option value="1C 2026">1C 2026</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
           <select id="rep-programa" onchange="cargarReportes()"><option value="">Todos los programas</option><option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option><option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option><option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option></select>
           <select id="rep-sexo" onchange="cargarReportes()"><option value="">Todos (sexo)</option><option value="Hombre">Hombres</option><option value="Mujer">Mujeres</option></select>
           <select id="rep-pais" onchange="cargarReportes()"><option value="">Todos los países</option><option value="Costa Rica">Costa Rica</option><option value="Guatemala">Guatemala</option><option value="Honduras">Honduras</option><option value="El Salvador">El Salvador</option><option value="Nicaragua">Nicaragua</option><option value="Panamá">Panamá</option><option value="Colombia">Colombia</option><option value="Venezuela">Venezuela</option><option value="México">México</option></select>
           <select id="rep-ministerio" onchange="cargarReportes()"><option value="">Todos los ministerios</option><option value="Pastor">Pastoral</option><option value="Jóvenes">Jóvenes</option><option value="Misiones">Misiones</option><option value="Enseñanza">Enseñanza</option><option value="Alabanza">Alabanza</option><option value="Consejería">Consejería</option></select>
           <select id="rep-dedicacion" onchange="cargarReportes()"><option value="">Toda dedicación</option><option value="Tiempo Completo">Tiempo Completo</option><option value="Medio Tiempo">Medio Tiempo</option><option value="Cuarto de Tiempo">Cuarto de Tiempo</option><option value="Casual o Servicio">Casual o Servicio</option></select>
         </div>
+
+        <div id="rep-periodo-info" style="display:none;background:var(--brand-light);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <span style="font-size:14px;font-weight:700;color:var(--brand)" id="rep-periodo-nombre">—</span>
+              <span style="font-size:12px;color:var(--muted);margin-left:8px" id="rep-periodo-fechas"></span>
+            </div>
+            <span id="rep-periodo-badge" style="font-size:12px;font-weight:600"></span>
+          </div>
+        </div>
+
         <div class="stats-grid" id="rep-stats-grid">
           <div class="stat-card"><div class="stat-label">Total solicitudes</div><div class="stat-value" id="rep-total">—</div></div>
           <div class="stat-card"><div class="stat-label">Total becado</div><div class="stat-value" id="rep-monto" style="font-size:16px;padding-top:4px">—</div></div>
           <div class="stat-card"><div class="stat-label">Beneficiarios únicos</div><div class="stat-value" id="rep-beneficiarios">—</div></div>
           <div class="stat-card"><div class="stat-label">Mujeres</div><div class="stat-value" id="rep-mujeres">—</div></div>
         </div>
+
+        <!-- USO DE FONDOS EN ESTE PERÍODO -->
+        <div class="card" id="rep-fondos-card" style="display:none">
+          <div class="card-title">Uso de fondos en este período</div>
+          <div id="rep-fondos-periodo"></div>
+        </div>
+
         <div class="card" style="padding:0;overflow:hidden">
           <table>
-            <thead><tr><th>Estudiante</th><th>Sexo</th><th>País</th><th>Programa</th><th>Período</th><th>Ministerio</th><th>Dedicación</th><th>Fondo</th><th>Monto</th><th>Estado</th></tr></thead>
-            <tbody id="rep-tabla"><tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">Seleccioná filtros para ver el reporte</td></tr></tbody>
+            <thead><tr><th>Estudiante</th><th>Sexo</th><th>País</th><th>Programa</th><th>Ministerio</th><th>Dedicación</th><th>Fondo</th><th>Monto</th><th>Estado</th></tr></thead>
+            <tbody id="rep-tabla"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -318,12 +338,13 @@ async function adminLogout() { await sb.auth.signOut(); window.location.href='lo
 function showApp() { document.getElementById('page-auth').style.display='none'; document.getElementById('page-app').style.display='block'; cargarDashboard(); }
 
 function showAdminPage(page) {
-  document.querySelectorAll('.sidebar-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','solicitudes','fondos','estudiantes'][i]===page));
+  document.querySelectorAll('.sidebar-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','solicitudes','fondos','estudiantes','reportes'][i]===page));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('adm-'+page).classList.add('active');
   if (page==='solicitudes') cargarSolicitudes();
   else if (page==='fondos') cargarFondos();
   else if (page==='estudiantes') cargarEstudiantes();
+  else if (page==='reportes') inicializarReportes();
   else cargarDashboard();
 }
 
@@ -448,6 +469,48 @@ async function guardarFondo() {
   showAlert('fondos','✓ Fondo guardado correctamente.','success');
 }
 
+// ─── REPORTES POR PERÍODO ───────────────────────────────────────────────────
+let todosLosPeriodos=[];
+
+async function inicializarReportes(){
+  const{data}=await sb.from('periodos_solicitud').select('*').order('fecha_apertura',{ascending:false});
+  todosLosPeriodos=data||[];
+  const sel=document.getElementById('rep-periodo');
+  if(!todosLosPeriodos.length){
+    sel.innerHTML='<option value="">Sin períodos configurados</option>';
+    cargarReportes();
+    return;
+  }
+  sel.innerHTML='<option value="">Todos los períodos (histórico completo)</option>'+
+    todosLosPeriodos.map(p=>`<option value="${p.periodo_academico}" ${p.activo?'data-activo="1"':''}>${p.periodo_academico}${p.activo?' ● activo':''}</option>`).join('');
+  // Por defecto, seleccionar el período activo si existe
+  const activo=todosLosPeriodos.find(p=>p.activo);
+  if(activo)sel.value=activo.periodo_academico;
+  cambiarPeriodoReporte();
+}
+
+function cambiarPeriodoReporte(){
+  const periodo=document.getElementById('rep-periodo').value;
+  const info=document.getElementById('rep-periodo-info');
+  if(!periodo){info.style.display='none';}
+  else{
+    const p=todosLosPeriodos.find(x=>x.periodo_academico===periodo);
+    if(p){
+      info.style.display='block';
+      document.getElementById('rep-periodo-nombre').textContent=p.periodo_academico;
+      document.getElementById('rep-periodo-fechas').textContent='Del '+fmtDateLongAdm(p.fecha_apertura)+' al '+fmtDateLongAdm(p.fecha_cierre);
+      const hoy=new Date().toISOString().slice(0,10);
+      const abierto=p.activo&&hoy>=p.fecha_apertura&&hoy<=p.fecha_cierre;
+      document.getElementById('rep-periodo-badge').innerHTML=p.activo
+        ?(abierto?'<span style="color:var(--success)">● Período activo — recibiendo solicitudes</span>':'<span style="color:var(--warning)">● Activo (fuera de fechas)</span>')
+        :'<span style="color:var(--muted)">○ Período cerrado</span>';
+    }
+  }
+  cargarReportes();
+}
+
+function fmtDateLongAdm(d){return new Date(d+'T00:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});}
+
 async function cargarReportes() {
   const estado=document.getElementById('rep-estado').value;
   const periodo=document.getElementById('rep-periodo').value;
@@ -479,14 +542,44 @@ async function cargarReportes() {
   document.getElementById('rep-beneficiarios').textContent=beneficiarios;
   document.getElementById('rep-mujeres').textContent=mujeres;
 
+  // USO DE FONDOS — solo cuando hay un período específico seleccionado
+  const fondosCard=document.getElementById('rep-fondos-card');
+  if(periodo){
+    const periodoObj=todosLosPeriodos.find(p=>p.periodo_academico===periodo);
+    if(periodoObj){
+      const{data:asignaciones}=await sb.from('asignaciones_fondo_periodo').select('*,fondos_beca(nombre)').eq('periodo_id',periodoObj.id);
+      if(asignaciones&&asignaciones.length){
+        fondosCard.style.display='block';
+        document.getElementById('rep-fondos-periodo').innerHTML=asignaciones.map(a=>{
+          const usado=a.monto_asignado-a.monto_disponible;
+          const pct=a.monto_asignado>0?Math.round((usado/a.monto_asignado)*100):0;
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+              <span style="font-weight:600;color:var(--brand)">${a.fondos_beca?.nombre||'Fondo'}</span>
+              <span><strong style="color:var(--success)">₡${a.monto_disponible.toLocaleString('es-CR')}</strong> disponible de ₡${a.monto_asignado.toLocaleString('es-CR')}</span>
+            </div>
+            <div style="background:var(--border);border-radius:4px;height:7px">
+              <div style="background:linear-gradient(90deg,var(--brand),var(--brand-mid));border-radius:4px;height:7px;width:${pct}%"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${pct}% utilizado en este período</div>
+          </div>`;
+        }).join('');
+      } else {
+        fondosCard.style.display='block';
+        document.getElementById('rep-fondos-periodo').innerHTML='<p style="font-size:13px;color:var(--muted)">Este período no tiene fondos asignados.</p>';
+      }
+    }
+  } else {
+    fondosCard.style.display='none';
+  }
+
   const tbody=document.getElementById('rep-tabla');
-  if(!filtradas.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados con los filtros seleccionados</td></tr>';return;}
+  if(!filtradas.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados con los filtros seleccionados</td></tr>';return;}
   tbody.innerHTML=filtradas.map(s=>`<tr>
     <td><strong>${s.perfiles?.nombre_completo||'—'}</strong></td>
     <td style="font-size:12px">${s.perfiles?.sexo||'—'}</td>
     <td style="font-size:12px">${s.perfiles?.pais||'—'}</td>
     <td style="font-size:12px">${(s.programa||'').replace('Bachillerato en ','Bac. ').replace('Maestría en ','Mae. ').replace('Diplomado en ','Dip. ')}</td>
-    <td style="font-size:12px">${s.periodo}</td>
     <td style="font-size:12px">${s.perfiles?.ministerio||'—'}</td>
     <td style="font-size:12px">${s.perfiles?.dedicacion_ministerio||'—'}</td>
     <td style="font-size:12px">${s.fondos_beca?.nombre||'—'}</td>
