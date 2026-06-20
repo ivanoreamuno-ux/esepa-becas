@@ -101,6 +101,13 @@
   .decision-ya-tomada{background:var(--success-bg);border:1px solid #a7f3d0;border-radius:var(--radius);padding:1.25rem;margin-top:1.25rem;text-align:center;}
   .decision-rechazada{background:var(--danger-bg);border:1px solid #fecaca;}
   @media(max-width:768px){.layout{grid-template-columns:1fr;}.sidebar{display:none;}.stats-grid{grid-template-columns:repeat(2,1fr);}.detail-grid{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}}
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:1rem;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+  .modal-title{font-size:16px;font-weight:600;color:var(--brand);}
+  .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;}
 </style>
 </head>
 <body>
@@ -264,22 +271,16 @@
 
 <!-- MODAL: PERÍODO DE SOLICITUD -->
 <div class="modal-overlay" id="modal-periodo">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header">
       <span class="modal-title" id="mp2-titulo">Nuevo período de solicitud</span>
       <button class="close-btn" onclick="closeModal('modal-periodo')">×</button>
     </div>
     <div id="alert-modal-periodo"></div>
     <div class="form-group">
-      <label>Período académico</label>
-      <select id="periodo-academico" style="width:100%">
-        <option value="1C 2026">1er Cuatrimestre 2026</option>
-        <option value="2C 2026">2do Cuatrimestre 2026</option>
-        <option value="3C 2026">3er Cuatrimestre 2026</option>
-        <option value="1C 2027">1er Cuatrimestre 2027</option>
-        <option value="2C 2027">2do Cuatrimestre 2027</option>
-        <option value="3C 2027">3er Cuatrimestre 2027</option>
-      </select>
+      <label>Nombre del período</label>
+      <input type="text" id="periodo-academico" placeholder="Ej: IIIC2026" style="width:100%">
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">Usá el formato que prefieras (ej: IIIC2026, 3C 2026). Este nombre se usa internamente para vincular solicitudes y fondos.</p>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
       <div class="form-group">
@@ -293,11 +294,25 @@
     </div>
     <div class="form-group">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="periodo-activo" checked style="width:auto">
-        <span style="text-transform:none;font-weight:500;color:var(--text)">Período activo (visible para estudiantes)</span>
+        <input type="checkbox" id="periodo-activo" style="width:auto">
+        <span style="text-transform:none;font-weight:500;color:var(--text)">Período activo — los estudiantes podrán solicitar beca</span>
       </label>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px">Solo puede haber un período activo a la vez. Si activás este, cualquier otro período activo deberá desactivarse primero.</p>
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1rem">
+
+    <!-- FONDOS ASIGNADOS A ESTE PERÍODO -->
+    <div id="seccion-fondos-periodo" style="display:none;border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1.25rem">
+      <div style="font-size:13px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.75rem">💰 Fondos asignados a este período</div>
+      <div id="lista-fondos-periodo" style="margin-bottom:0.75rem"></div>
+      <div style="display:flex;gap:8px">
+        <select id="sel-fondo-asignar" style="flex:1"><option value="">Seleccionar fondo...</option></select>
+        <input type="number" id="monto-fondo-asignar" placeholder="Monto ₡" style="width:140px">
+        <button class="btn btn-secondary btn-sm" onclick="asignarFondoAPeriodo()">+ Asignar</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">El monto asignado se reserva del balance total del fondo para usarse exclusivamente en este período.</p>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:1.25rem">
       <button class="btn btn-secondary" onclick="closeModal('modal-periodo')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarPeriodo()" id="btn-guardar-periodo">Guardar período</button>
     </div>
@@ -520,11 +535,22 @@ async function abrirDetalle(id,estado){
     // PANEL DE DECISIÓN
     (yaDecidida ? panelDecisionTomada(s) : panelDecision(s));
 
-  // Poblar fondos en el select
+  // Poblar fondos en el select — solo fondos asignados al período de esta solicitud
   if(!yaDecidida){
-    const{data:fondos}=await sb.from('fondos_beca').select('id,nombre,monto_disponible').eq('activo',true);
+    const{data:periodoObj}=await sb.from('periodos_solicitud').select('id').eq('periodo_academico',s.periodo).single();
+    let asignaciones=[];
+    if(periodoObj){
+      const{data}=await sb.from('asignaciones_fondo_periodo').select('id,fondo_id,monto_disponible,fondos_beca(nombre)').eq('periodo_id',periodoObj.id);
+      asignaciones=data||[];
+    }
     const sel=document.getElementById('sel-fondo-'+s.id);
-    if(sel)sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+(fondos||[]).map(f=>'<option value="'+f.id+'">'+f.nombre+' (₡'+f.monto_disponible.toLocaleString('es-CR')+' disp.)</option>').join('');
+    if(sel){
+      if(!asignaciones.length){
+        sel.innerHTML='<option value="">⚠ Sin fondos asignados a este período</option>';
+      } else {
+        sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+asignaciones.map(a=>'<option value="'+a.fondo_id+'" data-asignacion="'+a.id+'" data-disponible="'+a.monto_disponible+'">'+(a.fondos_beca?.nombre||'Fondo')+' (₡'+a.monto_disponible.toLocaleString('es-CR')+' disp. en este período)</option>').join('');
+      }
+    }
   }
 }
 
@@ -571,7 +597,9 @@ function panelDecisionTomada(s){
 }
 
 async function tomarDecision(id,decision){
-  const fondo=document.getElementById('sel-fondo-'+id)?.value||null;
+  const fondoSelect=document.getElementById('sel-fondo-'+id);
+  const fondo=fondoSelect?.value||null;
+  const asignacionId=fondoSelect?.selectedOptions[0]?.dataset?.asignacion||null;
   const monto=parseFloat(document.getElementById('inp-monto-'+id)?.value)||null;
   const notas=document.getElementById('inp-notas-'+id)?.value.trim()||null;
   const comentarioEst=document.getElementById('inp-comentario-est-'+id)?.value.trim()||null;
@@ -581,14 +609,16 @@ async function tomarDecision(id,decision){
   if(decision==='rechazada'&&!notas){alertEl.innerHTML='<div class="alert alert-danger">Debés documentar el motivo del rechazo.</div>';return;}
 
   if(fondo&&monto&&decision==='aprobada'){
-    const{data:f}=await sb.from('fondos_beca').select('monto_disponible').eq('id',fondo).single();
-    if(f&&f.monto_disponible<monto){alertEl.innerHTML='<div class="alert alert-danger">El monto supera el disponible en ese fondo (₡'+f.monto_disponible.toLocaleString('es-CR')+').</div>';return;}
-    await sb.from('fondos_beca').update({monto_disponible:f.monto_disponible-monto}).eq('id',fondo);
+    if(!asignacionId){alertEl.innerHTML='<div class="alert alert-danger">Este fondo no tiene una asignación válida para este período. Verificá en Períodos de solicitud.</div>';return;}
+    const{data:a}=await sb.from('asignaciones_fondo_periodo').select('monto_disponible').eq('id',asignacionId).single();
+    if(a&&a.monto_disponible<monto){alertEl.innerHTML='<div class="alert alert-danger">El monto supera el disponible de este fondo en el período (₡'+a.monto_disponible.toLocaleString('es-CR')+').</div>';return;}
+    await sb.from('asignaciones_fondo_periodo').update({monto_disponible:a.monto_disponible-monto}).eq('id',asignacionId);
   }
 
   const updates={
     estado:decision,decision_comite:decision,
     fondo_id:fondo||null,monto_asignado:monto||null,
+    asignacion_fondo_periodo_id:asignacionId||null,
     notas_comite:notas,notas_admin:notas,
     comentario_comite_estudiante:comentarioEst,
     revisado_por:currentComite.id,revisado_en:new Date().toISOString()
@@ -605,21 +635,32 @@ async function tomarDecision(id,decision){
 
 // ─── PERÍODOS DE SOLICITUD ──────────────────────────────────────────────────
 let periodoEditando=null;
+let fondosAsignadosTemp=[]; // fondos asignados al período que se está editando/creando
 
 async function renderPeriodos(){
   const{data}=await sb.from('periodos_solicitud').select('*').order('fecha_apertura',{ascending:false});
   const c=document.getElementById('lista-periodos');
   if(!data||!data.length){c.innerHTML='<div class="empty"><div class="empty-icon">📅</div><h3>Sin períodos configurados</h3><p style="color:var(--muted)">Creá el primer período para habilitar las solicitudes de los estudiantes.</p></div>';return;}
+
+  // Cargar asignaciones de fondos por período para mostrar resumen
+  const{data:asignaciones}=await sb.from('asignaciones_fondo_periodo').select('*,fondos_beca(nombre)');
+
   const hoy=new Date().toISOString().slice(0,10);
   c.innerHTML=data.map(p=>{
-    const abierto=p.activo&&hoy>=p.fecha_apertura&&hoy<=p.fecha_cierre;
+    const dentroDeFechas=hoy>=p.fecha_apertura&&hoy<=p.fecha_cierre;
+    const abierto=p.activo&&dentroDeFechas;
     const vencido=hoy>p.fecha_cierre;
-    const estadoTxt=abierto?'<span style="color:var(--success);font-weight:600">● Abierto ahora</span>':vencido?'<span style="color:var(--muted)">○ Cerrado</span>':'<span style="color:var(--warning);font-weight:600">○ Próximo</span>';
+    const estadoTxt=p.activo
+      ?(abierto?'<span style="color:var(--success);font-weight:600">● ACTIVO — recibiendo solicitudes</span>':vencido?'<span style="color:var(--danger);font-weight:600">● Activo pero fuera de fechas</span>':'<span style="color:var(--warning);font-weight:600">● Activo — aún no inicia</span>')
+      :'<span style="color:var(--muted)">○ Inactivo</span>';
+    const fondosDelPeriodo=(asignaciones||[]).filter(a=>a.periodo_id===p.id);
+    const totalAsignado=fondosDelPeriodo.reduce((s,a)=>s+(a.monto_asignado||0),0);
     return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:var(--brand)">${p.periodo_academico} ${!p.activo?'<span style="font-size:11px;color:var(--muted);font-weight:400">(inactivo)</span>':''}</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:var(--brand)">${p.periodo_academico}</div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px">Del ${fmtDateLong(p.fecha_apertura)} al ${fmtDateLong(p.fecha_cierre)}</div>
         <div style="font-size:12px;margin-top:4px">${estadoTxt}</div>
+        ${fondosDelPeriodo.length?'<div style="font-size:12px;color:var(--brand);margin-top:6px">💰 '+fondosDelPeriodo.length+' fondo'+(fondosDelPeriodo.length>1?'s':'')+' asignado'+(fondosDelPeriodo.length>1?'s':'')+' · Total: ₡'+totalAsignado.toLocaleString('es-CR')+'</div>':'<div style="font-size:12px;color:var(--muted);margin-top:6px">Sin fondos asignados</div>'}
       </div>
       <button class="btn btn-secondary btn-sm" onclick="editarPeriodo('${p.id}')">Editar</button>
     </div>`;
@@ -630,12 +671,14 @@ function fmtDateLong(d){return new Date(d+'T00:00:00').toLocaleDateString('es-CR
 
 function abrirNuevoPeriodo(){
   periodoEditando=null;
+  fondosAsignadosTemp=[];
   document.getElementById('mp2-titulo').textContent='Nuevo período de solicitud';
   document.getElementById('periodo-academico').value='';
   document.getElementById('periodo-apertura').value='';
   document.getElementById('periodo-cierre').value='';
-  document.getElementById('periodo-activo').checked=true;
+  document.getElementById('periodo-activo').checked=false;
   document.getElementById('alert-modal-periodo').innerHTML='';
+  document.getElementById('seccion-fondos-periodo').style.display='none';
   document.getElementById('modal-periodo').classList.add('open');
 }
 
@@ -650,10 +693,95 @@ async function editarPeriodo(id){
   document.getElementById('periodo-activo').checked=data.activo;
   document.getElementById('alert-modal-periodo').innerHTML='';
   document.getElementById('modal-periodo').classList.add('open');
+
+  // Mostrar y cargar sección de fondos (solo disponible al editar, ya existe el período)
+  document.getElementById('seccion-fondos-periodo').style.display='block';
+  await cargarFondosDelPeriodo(data.id);
+  await poblarSelectFondosDisponibles();
+}
+
+async function cargarFondosDelPeriodo(periodoId){
+  const{data}=await sb.from('asignaciones_fondo_periodo').select('*,fondos_beca(nombre,monto_total,monto_disponible)').eq('periodo_id',periodoId);
+  fondosAsignadosTemp=data||[];
+  renderFondosDelPeriodo();
+}
+
+function renderFondosDelPeriodo(){
+  const c=document.getElementById('lista-fondos-periodo');
+  if(!fondosAsignadosTemp.length){c.innerHTML='<p style="font-size:12px;color:var(--muted)">Aún no hay fondos asignados a este período.</p>';return;}
+  c.innerHTML=fondosAsignadosTemp.map(a=>{
+    const usado=a.monto_asignado-a.monto_disponible;
+    const pct=a.monto_asignado>0?Math.round((usado/a.monto_asignado)*100):0;
+    return `<div style="background:var(--bg);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:13px;font-weight:600;color:var(--brand)">${a.fondos_beca?.nombre||'Fondo'}</span>
+        <div style="font-size:11px;color:var(--muted)">₡${a.monto_disponible.toLocaleString('es-CR')} disponible de ₡${a.monto_asignado.toLocaleString('es-CR')} (${pct}% usado)</div>
+      </div>
+      <button onclick="quitarFondoDelPeriodo('${a.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px" title="Quitar">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function poblarSelectFondosDisponibles(){
+  const{data}=await sb.from('fondos_beca').select('*').eq('activo',true);
+  const sel=document.getElementById('sel-fondo-asignar');
+  sel.innerHTML='<option value="">Seleccionar fondo...</option>'+(data||[]).map(f=>`<option value="${f.id}" data-disponible="${f.monto_disponible}">${f.nombre} (₡${f.monto_disponible.toLocaleString('es-CR')} disp. en balance global)</option>`).join('');
+}
+
+async function asignarFondoAPeriodo(){
+  if(!periodoEditando){alertModalPeriodo('Guardá el período primero antes de asignar fondos.','danger');return;}
+  const fondoId=document.getElementById('sel-fondo-asignar').value;
+  const monto=parseFloat(document.getElementById('monto-fondo-asignar').value);
+  if(!fondoId||!monto||monto<=0){alertModalPeriodo('Seleccioná un fondo e ingresá un monto válido.','danger');return;}
+
+  // Verificar que no exceda el balance global disponible del fondo
+  const{data:fondo}=await sb.from('fondos_beca').select('monto_disponible,nombre').eq('id',fondoId).single();
+  if(fondo&&monto>fondo.monto_disponible){alertModalPeriodo('El monto excede el balance disponible de '+fondo.nombre+' (₡'+fondo.monto_disponible.toLocaleString('es-CR')+').','danger');return;}
+
+  // Verificar si ya existe asignación de este fondo a este período (actualizar en vez de duplicar)
+  const existente=fondosAsignadosTemp.find(a=>a.fondo_id===fondoId);
+  if(existente){alertModalPeriodo('Este fondo ya está asignado a este período. Quitalo primero si querés cambiar el monto.','danger');return;}
+
+  const{error}=await sb.from('asignaciones_fondo_periodo').insert({
+    fondo_id:fondoId,periodo_id:periodoEditando.id,
+    monto_asignado:monto,monto_disponible:monto,
+    creado_por:currentComite.id
+  });
+  if(error){alertModalPeriodo('Error: '+error.message,'danger');return;}
+
+  // Reducir el balance global del fondo (se reserva para este período)
+  await sb.from('fondos_beca').update({monto_disponible:fondo.monto_disponible-monto}).eq('id',fondoId);
+
+  document.getElementById('monto-fondo-asignar').value='';
+  document.getElementById('sel-fondo-asignar').value='';
+  await cargarFondosDelPeriodo(periodoEditando.id);
+  await poblarSelectFondosDisponibles();
+  alertModalPeriodo('✓ Fondo asignado correctamente.','success');
+}
+
+async function quitarFondoDelPeriodo(asignacionId){
+  const asign=fondosAsignadosTemp.find(a=>a.id===asignacionId);
+  if(!asign)return;
+  if(!confirm('¿Quitar esta asignación? El monto no utilizado regresará al balance global del fondo.'))return;
+
+  // Regresar el saldo no usado al balance global del fondo
+  const{data:fondo}=await sb.from('fondos_beca').select('monto_disponible').eq('id',asign.fondo_id).single();
+  if(fondo){
+    await sb.from('fondos_beca').update({monto_disponible:fondo.monto_disponible+asign.monto_disponible}).eq('id',asign.fondo_id);
+  }
+  await sb.from('asignaciones_fondo_periodo').delete().eq('id',asignacionId);
+  await cargarFondosDelPeriodo(periodoEditando.id);
+  await poblarSelectFondosDisponibles();
+}
+
+function alertModalPeriodo(msg,type){
+  const el=document.getElementById('alert-modal-periodo');
+  el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';
+  setTimeout(()=>el.innerHTML='',5000);
 }
 
 async function guardarPeriodo(){
-  const periodo_academico=document.getElementById('periodo-academico').value;
+  const periodo_academico=document.getElementById('periodo-academico').value.trim();
   const fecha_apertura=document.getElementById('periodo-apertura').value;
   const fecha_cierre=document.getElementById('periodo-cierre').value;
   const activo=document.getElementById('periodo-activo').checked;
@@ -662,15 +790,44 @@ async function guardarPeriodo(){
   if(!periodo_academico||!fecha_apertura||!fecha_cierre){alertEl.innerHTML='<div class="alert alert-danger">Completá todos los campos.</div>';return;}
   if(fecha_cierre<=fecha_apertura){alertEl.innerHTML='<div class="alert alert-danger">La fecha de cierre debe ser posterior a la de apertura.</div>';return;}
 
+  // REGLA: solo un período activo a la vez
+  if(activo){
+    const{data:otroActivo}=await sb.from('periodos_solicitud').select('id,periodo_academico').eq('activo',true).neq('id',periodoEditando?.id||'00000000-0000-0000-0000-000000000000');
+    if(otroActivo&&otroActivo.length){
+      alertEl.innerHTML='<div class="alert alert-danger">Ya existe un período activo: <strong>'+otroActivo[0].periodo_academico+'</strong>. Desactivalo primero antes de activar este.</div>';
+      return;
+    }
+  }
+
+  // REGLA: si se está desactivando un período que tenía solicitudes pendientes, bloquear
+  if(periodoEditando&&periodoEditando.activo&&!activo){
+    const{data:pendCount}=await sb.rpc('periodo_tiene_pendientes',{p_periodo:periodoEditando.periodo_academico});
+    if(pendCount&&pendCount>0){
+      alertEl.innerHTML='<div class="alert alert-danger">No se puede desactivar este período: hay <strong>'+pendCount+'</strong> solicitud(es) pendiente(s) o en revisión sin resolver. Resolvé todas las solicitudes antes de cerrar el período.</div>';
+      return;
+    }
+  }
+
   const btn=document.getElementById('btn-guardar-periodo');btn.textContent='Guardando...';btn.disabled=true;
-  let error;
+  let error,data;
   if(periodoEditando){
-    ({error}=await sb.from('periodos_solicitud').update({periodo_academico,fecha_apertura,fecha_cierre,activo,actualizado_en:new Date().toISOString()}).eq('id',periodoEditando.id));
+    ({error,data}=await sb.from('periodos_solicitud').update({periodo_academico,fecha_apertura,fecha_cierre,activo,actualizado_en:new Date().toISOString()}).eq('id',periodoEditando.id).select().single());
   } else {
-    ({error}=await sb.from('periodos_solicitud').insert({periodo_academico,fecha_apertura,fecha_cierre,activo,creado_por:currentComite.id}));
+    ({error,data}=await sb.from('periodos_solicitud').insert({periodo_academico,fecha_apertura,fecha_cierre,activo,creado_por:currentComite.id}).select().single());
   }
   btn.textContent='Guardar período';btn.disabled=false;
-  if(error){alertEl.innerHTML='<div class="alert alert-danger">'+(error.code==='23505'?'Ya existe un período configurado con ese nombre académico.':error.message)+'</div>';return;}
+  if(error){alertEl.innerHTML='<div class="alert alert-danger">'+(error.code==='23505'?'Ya existe un período configurado con ese nombre.':error.message)+'</div>';return;}
+
+  if(!periodoEditando&&data){
+    // Período recién creado — habilitar la sección de fondos sin cerrar el modal
+    periodoEditando=data;
+    document.getElementById('seccion-fondos-periodo').style.display='block';
+    await cargarFondosDelPeriodo(data.id);
+    await poblarSelectFondosDisponibles();
+    alertEl.innerHTML='<div class="alert alert-success">✓ Período creado. Ahora podés asignarle fondos abajo.</div>';
+    return;
+  }
+
   closeModal('modal-periodo');
   showAlert('main','✓ Período guardado correctamente.','success');
   renderPeriodos();
