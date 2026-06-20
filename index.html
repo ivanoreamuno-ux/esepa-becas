@@ -340,6 +340,24 @@
           <div class="progress-bar-wrap"><div class="progress-bar" id="perfil-bar" style="width:0%"></div></div>
           <p class="text-muted mt-1">Un perfil 100% completo es requerido para solicitar beca.</p>
         </div>
+
+        <!-- FOTO DE PERFIL -->
+        <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+          <div style="position:relative;flex-shrink:0">
+            <div id="foto-preview-wrap" style="width:88px;height:88px;border-radius:50%;background:var(--brand-light);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center">
+              <img id="foto-preview-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+              <span id="foto-placeholder-icon" style="font-size:32px;color:var(--brand-mid)">👤</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--brand);margin-bottom:4px">Foto de perfil</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:8px">El Comité de Becas podrá ver tu foto al revisar tu solicitud. Usá una foto clara de tu rostro, formato JPG o PNG.</p>
+            <input type="file" id="p-foto-file" accept="image/jpeg,image/png" style="display:none" onchange="previsualizarFoto()">
+            <button class="btn btn-secondary" style="font-size:13px;padding:6px 14px" onclick="document.getElementById('p-foto-file').click()">📷 Subir foto</button>
+            <span id="foto-upload-status" style="font-size:12px;color:var(--muted);margin-left:8px"></span>
+          </div>
+        </div>
+
         <div class="card-title" style="margin-bottom:1.25rem">Datos personales</div>
         <div class="form-row">
           <div class="form-group"><label>Nombre completo *</label><input type="text" id="p-nombre"></div>
@@ -478,7 +496,44 @@ async function cargarPerfil(){
     document.getElementById('p-trabajo').value=String(data.tiene_trabajo_secular);
     if(data.tiene_trabajo_secular){document.getElementById('trabajo-desc-wrap').style.display='block';set('p-trabajo-desc',data.descripcion_trabajo_secular);}
   }
+  if(data.foto_url){mostrarFotoPreview(data.foto_url);}
   actualizarBarraCompletitud(data);
+}
+
+function mostrarFotoPreview(url){
+  document.getElementById('foto-preview-img').src=url;
+  document.getElementById('foto-preview-img').style.display='block';
+  document.getElementById('foto-placeholder-icon').style.display='none';
+}
+
+async function previsualizarFoto(){
+  const file=document.getElementById('p-foto-file').files[0];
+  if(!file)return;
+  if(file.size>3*1024*1024){
+    document.getElementById('foto-upload-status').textContent='⚠ La imagen no debe superar 3MB.';
+    document.getElementById('foto-upload-status').style.color='var(--danger)';
+    return;
+  }
+  // Vista previa inmediata local
+  const reader=new FileReader();
+  reader.onload=e=>mostrarFotoPreview(e.target.result);
+  reader.readAsDataURL(file);
+
+  // Subir a Supabase Storage de inmediato
+  const statusEl=document.getElementById('foto-upload-status');
+  statusEl.style.color='var(--muted)';
+  statusEl.textContent='Subiendo...';
+  const ext=file.name.split('.').pop().toLowerCase();
+  const path=`${currentUser.id}/foto.${ext}`;
+  const{error}=await sb.storage.from('fotos-perfil').upload(path,file,{upsert:true});
+  if(error){statusEl.textContent='Error al subir: '+error.message;statusEl.style.color='var(--danger)';return;}
+  const{data:urlData}=sb.storage.from('fotos-perfil').getPublicUrl(path);
+  const publicUrl=urlData.publicUrl+'?t='+Date.now(); // cache-bust
+  await sb.from('perfiles').update({foto_url:publicUrl}).eq('id',currentUser.id);
+  currentPerfil.foto_url=publicUrl;
+  statusEl.textContent='✓ Foto actualizada.';
+  statusEl.style.color='var(--success)';
+  setTimeout(()=>{statusEl.textContent='';},4000);
 }
 
 function actualizarBarraCompletitud(data){

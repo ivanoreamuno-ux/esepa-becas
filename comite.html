@@ -357,7 +357,7 @@ async function showApp(){
 }
 
 async function cargarTodas(){
-  const{data}=await sb.from('solicitudes').select('*,perfiles(nombre_completo,telefono,pais,ciudad,iglesia,nombre_pastor,correo_pastor,ministerio,dedicacion_ministerio,tiene_trabajo_secular,descripcion_trabajo_secular,numero_identificacion,sexo,programa,cuatrimestre_ingreso),fondos_beca(nombre)').order('creado_en',{ascending:true});
+  const{data}=await sb.from('solicitudes').select('*,perfiles(nombre_completo,telefono,pais,ciudad,iglesia,nombre_pastor,correo_pastor,ministerio,dedicacion_ministerio,tiene_trabajo_secular,descripcion_trabajo_secular,numero_identificacion,sexo,programa,cuatrimestre_ingreso,foto_url),fondos_beca(nombre)').order('creado_en',{ascending:true});
   todasSolicitudes=data||[];
   const pend=todasSolicitudes.filter(s=>s.estado==='pendiente').length;
   document.getElementById('badge-pendientes').textContent=pend;
@@ -465,7 +465,12 @@ function renderLista(estado){
     const dias=Math.floor((Date.now()-new Date(s.creado_en).getTime())/86400000);
     const c=calcCosto(s.programa,s.cantidad_cursos||1);
     return '<div class="sol-card'+(dias>5&&estado==='pendiente'?' urgente':'')+'" onclick="abrirDetalle(\''+s.id+'\',\''+estado+'\')">' +
-      '<div class="sol-card-header"><div><div class="sol-nombre">'+(s.perfiles?.nombre_completo||'—')+'</div><div class="sol-meta">'+s.programa+' · '+s.periodo+'</div></div>'+badgeHtml(s.estado)+'</div>'+
+      '<div class="sol-card-header"><div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="width:40px;height:40px;border-radius:50%;background:var(--brand-light);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+          (s.perfiles?.foto_url?'<img src="'+s.perfiles.foto_url+'" alt="" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:16px;color:var(--brand-mid)">👤</span>')+
+        '</div>'+
+        '<div><div class="sol-nombre">'+(s.perfiles?.nombre_completo||'—')+'</div><div class="sol-meta">'+s.programa+' · '+s.periodo+'</div></div>'+
+      '</div>'+badgeHtml(s.estado)+'</div>'+
       '<div style="font-size:13px;color:var(--muted)">'+s.cantidad_cursos+' curso'+(s.cantidad_cursos>1?'s':'')+' · Costo total: <strong style="color:var(--brand)">₡'+c.total.toLocaleString('es-CR')+'</strong>'+
       (s.monto_asignado?' · Beca: <strong style="color:var(--success)">₡'+s.monto_asignado.toLocaleString('es-CR')+'</strong>':'')+'</div>'+
       '<div class="sol-card-footer">'+(s.notas_comite?'<span style="font-size:12px;color:var(--muted);font-style:italic">"'+s.notas_comite.substring(0,60)+(s.notas_comite.length>60?'...':'')+'"</span>':'<span></span>')+'<span class="sol-dias">Hace '+dias+' día'+(dias!==1?'s':'')+'</span></div>'+
@@ -494,8 +499,13 @@ async function abrirDetalle(id,estado){
     '<button class="back-btn" onclick="volverLista(\''+estado+'\')">&larr; Volver a la lista</button>'+
     (s.creada_por_excepcion?'<div class="alert alert-warning" style="margin-bottom:1rem">⚠ Esta solicitud fue registrada por Registro/Admin como <strong>excepción fuera de plazo</strong>. '+(s.notas_registro?s.notas_registro.replace('EXCEPCIÓN registrada por Registro/Admin. ',''):'')+'</div>':'')+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px">'+
-      '<div><div style="font-size:20px;font-weight:700;color:var(--brand)">'+(p?.nombre_completo||'—')+'</div>'+
-      '<div style="font-size:13px;color:var(--muted);margin-top:2px">'+s.programa+' · '+s.periodo+' · '+(s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación')+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:14px">'+
+        '<div style="width:64px;height:64px;border-radius:50%;background:var(--brand-light);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+          (p?.foto_url?'<img src="'+p.foto_url+'" alt="" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:26px;color:var(--brand-mid)">👤</span>')+
+        '</div>'+
+        '<div><div style="font-size:20px;font-weight:700;color:var(--brand)">'+(p?.nombre_completo||'—')+'</div>'+
+        '<div style="font-size:13px;color:var(--muted);margin-top:2px">'+s.programa+' · '+s.periodo+' · '+(s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación')+'</div></div>'+
+      '</div>'+
       badgeHtml(s.estado)+
     '</div>'+
 
