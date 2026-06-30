@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testimonios — Becas ESEPA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1B2F5E; --navy-dark:#15244a; --navy-mid:#2c4a7c; --navy-light:#eef2f9;
+    --orange:#C85A27; --orange-dark:#9e3e1e; --cream:#E8D5C4;
+    --surface:#fff; --bg:#f4f6fa; --border:#dce3ef; --text:#1a1f2e; --muted:#5a6478;
+    --success:#1a7a4a; --success-bg:#e8f5ee; --danger:#b91c1c; --danger-bg:#fef2f2;
+    --warning:#92400e; --warning-bg:#fffbeb; --info:#1e40af; --info-bg:#eff6ff;
+    --radius:10px; --shadow:0 1px 4px rgba(27,47,94,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+
+  /* AUTH */
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:linear-gradient(160deg,var(--navy-dark) 0%,var(--navy) 55%,var(--navy-mid) 100%);}
+  .auth-card{background:var(--surface);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 12px 40px rgba(0,0,0,0.25);}
+  .auth-logo{text-align:center;margin-bottom:1.75rem;}
+  .auth-logo img{height:64px;width:auto;object-fit:contain;margin-bottom:1rem;}
+  .auth-logo h1{font-size:18px;font-weight:700;color:var(--navy);}
+  .auth-logo p{font-size:13px;color:var(--muted);margin-top:2px;}
+  .form-group{margin-bottom:1rem;}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:4px;}
+  input,select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);font-family:inherit;}
+  input:focus,select:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.12);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange) 0%,#d4693d 100%);color:#fff;box-shadow:0 2px 6px rgba(193,82,42,.35);}
+  .btn-primary:hover{background:linear-gradient(135deg,var(--orange-dark),var(--orange));}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--bg);}
+  .btn-full{width:100%;}
+  .alert{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;display:none;}
+
+  /* APP */
+  #page-app{display:none;}
+  nav{background:linear-gradient(135deg,#9e3e1e 0%,var(--orange) 100%);color:#fff;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(30,53,96,0.3);}
+  .nav-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;}
+  .nav-brand img{height:32px;border-radius:5px;background:#fff;padding:2px 4px;}
+  .nav-user{display:flex;align-items:center;gap:12px;font-size:13px;}
+  .btn-link{background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;}
+  .btn-link:hover{background:rgba(255,255,255,0.15);}
+
+  .container{max-width:1180px;margin:0 auto;padding:1.75rem 1.25rem 3rem;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;}
+  .header-row h1{font-size:20px;color:var(--navy);font-weight:700;}
+  .header-row p{font-size:13px;color:var(--muted);margin-top:2px;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.8rem;margin-bottom:1.25rem;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem 1rem;box-shadow:var(--shadow);}
+  .stat-card .num{font-size:22px;font-weight:700;color:var(--navy);}
+  .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .toolbar{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem 1rem;box-shadow:var(--shadow);}
+  .toolbar input,.toolbar select{width:auto;min-width:160px;}
+  .toolbar .spacer{flex:1;}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  thead{background:var(--navy);color:#fff;}
+  th{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
+  tbody tr:hover{background:var(--navy-light);}
+  tbody tr{cursor:pointer;}
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .badge-nuevo{background:var(--info-bg);color:var(--info);}
+  .badge-contactado{background:var(--warning-bg);color:var(--warning);}
+  .badge-programado{background:#f3e8ff;color:#7e22ce;}
+  .badge-grabado{background:var(--success-bg);color:var(--success);}
+  .badge-publicado{background:#dcfce7;color:#15803d;}
+  .badge-descartado{background:var(--danger-bg);color:var(--danger);}
+  .video-tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--cream);color:var(--orange-dark);font-weight:600;}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);}
+
+  /* MODAL */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,28,50,0.55);z-index:200;align-items:flex-start;justify-content:center;padding:2.5rem 1rem;overflow-y:auto;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border-radius:14px;max-width:700px;width:100%;padding:1.75rem 1.75rem 1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:2px solid var(--cream);}
+  .modal-head h2{font-size:18px;color:var(--navy);}
+  .modal-head .sub{font-size:13px;color:var(--muted);margin-top:3px;}
+  .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;}
+  .qa{margin-bottom:1rem;}
+  .qa .q{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;}
+  .qa .a{font-size:14px;color:var(--text);white-space:pre-wrap;background:var(--bg);border-radius:8px;padding:10px 12px;}
+  .qa .a.empty{color:var(--muted);font-style:italic;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.9rem;margin-bottom:1.25rem;}
+  .modal-footer{display:flex;gap:0.8rem;justify-content:flex-end;padding-top:1.1rem;border-top:1px solid var(--border);margin-top:0.5rem;}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-wrap" id="page-auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+      <h1>Testimonios de Becados</h1>
+      <p>Acceso de administrador</p>
+    </div>
+    <div id="alert-auth" class="alert"></div>
+    <div class="form-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="adm-email" placeholder="tu@esepa.org" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="adm-pw" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary btn-full" id="btn-adm-login" onclick="adminLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="page-app">
+  <nav>
+    <div class="nav-brand">
+      <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+      <span>Testimonios — Becas ESEPA</span>
+    </div>
+    <div class="nav-user">
+      <span id="nav-admin-nombre"></span>
+      <button class="btn-link" onclick="adminLogout()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="header-row">
+      <div>
+        <h1>Testimonios recibidos</h1>
+        <p>Respuestas del formulario público de testimonios de estudiantes becados.</p>
+      </div>
+      <button class="btn btn-primary" onclick="exportarExcel()">⬇ Exportar a Excel</button>
+    </div>
+
+    <div class="stat-row" id="stat-row"></div>
+
+    <div class="toolbar">
+      <input type="text" id="f-buscar" placeholder="Buscar por nombre, iglesia o programa..." oninput="renderTabla()">
+      <select id="f-video" onchange="renderTabla()">
+        <option value="">Disposición a video: todas</option>
+        <option value="si">Sí, con gusto</option>
+        <option value="tal_vez">Tal vez</option>
+        <option value="escrito_solamente">Solo escrito</option>
+        <option value="no_participa">No participa</option>
+      </select>
+      <select id="f-estado" onchange="renderTabla()">
+        <option value="">Estado: todos</option>
+        <option value="nuevo">Nuevo</option>
+        <option value="contactado">Contactado</option>
+        <option value="programado">Programado</option>
+        <option value="grabado">Grabado</option>
+        <option value="publicado">Publicado</option>
+        <option value="descartado">Descartado</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" onclick="cargarTestimonios()">↻ Actualizar</button>
+    </div>
+
+    <div id="tabla-wrap"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentAdmin = null;
+let testimonios = [];
+
+const VIDEO_LABELS = {
+  si: 'Sí, con gusto', tal_vez: 'Tal vez', escrito_solamente: 'Solo escrito', no_participa: 'No participa'
+};
+const ESTADO_LABELS = {
+  nuevo:'Nuevo', contactado:'Contactado', programado:'Programado', grabado:'Grabado', publicado:'Publicado', descartado:'Descartado'
+};
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: p } = await sb.from('perfiles').select('rol,nombre_completo').eq('id', session.user.id).single();
+    if (p && p.rol === 'admin') { currentAdmin = session.user; document.getElementById('nav-admin-nombre').textContent = p.nombre_completo; showApp(); }
+  }
+}
+
+async function adminLogin() {
+  const email = document.getElementById('adm-email').value.trim();
+  const pw = document.getElementById('adm-pw').value;
+  const alertEl = document.getElementById('alert-auth'); alertEl.style.display='none';
+  if (!email || !pw) { alertEl.textContent='Completá correo y contraseña.'; alertEl.style.display='block'; return; }
+  const btn = document.getElementById('btn-adm-login'); btn.textContent='Ingresando...'; btn.disabled=true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  btn.textContent='Ingresar'; btn.disabled=false;
+  if (error) { alertEl.textContent='Credenciales incorrectas.'; alertEl.style.display='block'; return; }
+  const { data: p } = await sb.from('perfiles').select('rol,nombre_completo').eq('id', data.user.id).single();
+  if (!p || p.rol !== 'admin') { alertEl.textContent='No tenés permisos de administrador.'; alertEl.style.display='block'; await sb.auth.signOut(); return; }
+  currentAdmin = data.user; document.getElementById('nav-admin-nombre').textContent = p.nombre_completo; showApp();
+}
+
+async function adminLogout() { await sb.auth.signOut(); window.location.reload(); }
+
+function showApp() {
+  document.getElementById('page-auth').style.display='none';
+  document.getElementById('page-app').style.display='block';
+  cargarTestimonios();
+}
+
+async function cargarTestimonios() {
+  document.getElementById('tabla-wrap').innerHTML = '<div class="empty-state">Cargando...</div>';
+  const { data, error } = await sb.from('testimonios').select('*').order('creado_en', { ascending: false });
+  if (error) { document.getElementById('tabla-wrap').innerHTML = '<div class="empty-state">Error al cargar los testimonios.</div>'; console.error(error); return; }
+  testimonios = data || [];
+  renderStats();
+  renderTabla();
+}
+
+function renderStats() {
+  const total = testimonios.length;
+  const dispuestos = testimonios.filter(t => t.disposicion_video === 'si').length;
+  const talVez = testimonios.filter(t => t.disposicion_video === 'tal_vez').length;
+  const grabados = testimonios.filter(t => t.estado_seguimiento === 'grabado' || t.estado_seguimiento === 'publicado').length;
+  const sinContactar = testimonios.filter(t => t.estado_seguimiento === 'nuevo').length;
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">Testimonios recibidos</div></div>
+    <div class="stat-card"><div class="num">${dispuestos}</div><div class="lbl">Dispuestos a video</div></div>
+    <div class="stat-card"><div class="num">${talVez}</div><div class="lbl">Tal vez, video</div></div>
+    <div class="stat-card"><div class="num">${grabados}</div><div class="lbl">Video grabado/publicado</div></div>
+    <div class="stat-card"><div class="num">${sinContactar}</div><div class="lbl">Sin contactar aún</div></div>
+  `;
+}
+
+function renderTabla() {
+  const buscar = document.getElementById('f-buscar').value.trim().toLowerCase();
+  const fVideo = document.getElementById('f-video').value;
+  const fEstado = document.getElementById('f-estado').value;
+
+  let filtrados = testimonios.filter(t => {
+    if (fVideo && t.disposicion_video !== fVideo) return false;
+    if (fEstado && t.estado_seguimiento !== fEstado) return false;
+    if (buscar) {
+      const blob = [t.nombre_completo, t.iglesia, t.programa].filter(Boolean).join(' ').toLowerCase();
+      if (!blob.includes(buscar)) return false;
+    }
+    return true;
+  });
+
+  if (filtrados.length === 0) {
+    document.getElementById('tabla-wrap').innerHTML = '<div class="empty-state">No hay testimonios que coincidan con el filtro.</div>';
+    return;
+  }
+
+  let rows = filtrados.map(t => `
+    <tr onclick="abrirModal('${t.id}')">
+      <td><strong>${escapeHtml(t.nombre_completo)}</strong><br><span style="color:var(--muted);font-size:12px;">${escapeHtml(t.programa||'')}</span></td>
+      <td>${escapeHtml(t.iglesia||'—')}</td>
+      <td>${t.disposicion_video ? '<span class="video-tag">'+(VIDEO_LABELS[t.disposicion_video]||t.disposicion_video)+'</span>' : '—'}</td>
+      <td><span class="badge badge-${t.estado_seguimiento}">${ESTADO_LABELS[t.estado_seguimiento]||t.estado_seguimiento}</span></td>
+      <td>${formatFecha(t.creado_en)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('tabla-wrap').innerHTML = `
+    <table>
+      <thead><tr><th>Estudiante</th><th>Iglesia</th><th>Video</th><th>Estado</th><th>Fecha</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function formatFecha(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-CR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function qaBlock(label, value) {
+  return `<div class="qa"><div class="q">${label}</div><div class="a ${value?'':'empty'}">${value ? escapeHtml(value) : 'Sin respuesta'}</div></div>`;
+}
+
+function abrirModal(id) {
+  const t = testimonios.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <h2>${escapeHtml(t.nombre_completo)}</h2>
+        <div class="sub">${escapeHtml(t.programa||'')}${t.iglesia ? ' · '+escapeHtml(t.iglesia) : ''}</div>
+      </div>
+      <button class="modal-close" onclick="cerrarModal()">&times;</button>
+    </div>
+
+    <div class="modal-grid">
+      <div class="qa"><div class="q">Correo</div><div class="a ${t.email?'':'empty'}">${t.email ? escapeHtml(t.email) : 'No proporcionado'}</div></div>
+      <div class="qa"><div class="q">Teléfono</div><div class="a ${t.telefono?'':'empty'}">${t.telefono ? escapeHtml(t.telefono) : 'No proporcionado'}</div></div>
+    </div>
+
+    ${qaBlock('Contexto antes de ESEPA', t.contexto_previo)}
+    ${qaBlock('Qué significó la beca', t.significado_beca)}
+    ${qaBlock('Diferencia en su formación', t.diferencia_formacion)}
+    ${qaBlock('Experiencia que lo marcó', t.experiencia_marcante)}
+    ${qaBlock('Mensaje para el donante', t.mensaje_donante)}
+    ${qaBlock('Frase para citar', t.frase_cita)}
+
+    <div class="modal-grid">
+      <div class="qa"><div class="q">Disposición a video</div><div class="a ${t.disposicion_video?'':'empty'}">${t.disposicion_video ? (VIDEO_LABELS[t.disposicion_video]||t.disposicion_video) : '—'}</div></div>
+      <div class="qa"><div class="q">Medio / horario para coordinar</div><div class="a ${(t.video_medio_contacto||t.video_horario)?'':'empty'}">${[t.video_medio_contacto, t.video_horario].filter(Boolean).join(' · ') || '—'}</div></div>
+    </div>
+
+    <div class="form-group">
+      <label>Estado de seguimiento</label>
+      <select id="modal-estado">
+        ${Object.entries(ESTADO_LABELS).map(([k,v]) => `<option value="${k}" ${t.estado_seguimiento===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notas internas</label>
+      <textarea id="modal-notas" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;">${t.notas_admin ? escapeHtml(t.notas_admin) : ''}</textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+      <button class="btn btn-primary" onclick="guardarSeguimiento('${t.id}')">Guardar cambios</button>
+    </div>
+  `;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+
+async function guardarSeguimiento(id) {
+  const estado_seguimiento = document.getElementById('modal-estado').value;
+  const notas_admin = document.getElementById('modal-notas').value.trim() || null;
+  const { error } = await sb.from('testimonios').update({ estado_seguimiento, notas_admin }).eq('id', id);
+  if (error) { alert('No se pudo guardar el cambio. Intenta de nuevo.'); console.error(error); return; }
+  cerrarModal();
+  await cargarTestimonios();
+}
+
+function exportarExcel() {
+  if (testimonios.length === 0) { alert('No hay testimonios para exportar.'); return; }
+  const filas = testimonios.map(t => ({
+    'Nombre Completo': t.nombre_completo,
+    'Programa': t.programa || '',
+    'Iglesia': t.iglesia || '',
+    'Correo': t.email || '',
+    'Teléfono': t.telefono || '',
+    'Contexto antes de ESEPA': t.contexto_previo || '',
+    'Qué significó la beca': t.significado_beca || '',
+    'Diferencia en su formación': t.diferencia_formacion || '',
+    'Experiencia que lo marcó': t.experiencia_marcante || '',
+    'Mensaje para el donante': t.mensaje_donante || '',
+    'Frase para citar': t.frase_cita || '',
+    'Disposición a video': VIDEO_LABELS[t.disposicion_video] || t.disposicion_video || '',
+    'Medio de contacto': t.video_medio_contacto || '',
+    'Horario sugerido': t.video_horario || '',
+    'Autoriza uso': t.autoriza_uso ? 'Sí' : 'No',
+    'Estado de seguimiento': ESTADO_LABELS[t.estado_seguimiento] || t.estado_seguimiento,
+    'Notas internas': t.notas_admin || '',
+    'Fecha de envío': formatFecha(t.creado_en)
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [
+    {wch:24},{wch:22},{wch:22},{wch:24},{wch:14},
+    {wch:40},{wch:40},{wch:40},{wch:40},{wch:40},
+    {wch:30},{wch:18},{wch:16},{wch:24},{wch:12},{wch:18},{wch:30},{wch:14}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Testimonios');
+  const fecha = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Testimonios_ESEPA_${fecha}.xlsx`);
+}
+
+init();
+</script>
+</body>
+</html>

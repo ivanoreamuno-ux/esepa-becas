@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparte tu testimonio — Seminario ESEPA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --navy:#1B2F5E; --navy-dark:#15244a; --navy-mid:#2c4a7c; --navy-light:#eef2f9;
+    --orange:#C85A27; --orange-dark:#9e3e1e; --cream:#E8D5C4;
+    --surface:#fff; --bg:#f4f6fa; --border:#dce3ef; --text:#1a1f2e; --muted:#5a6478;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;min-height:100vh;}
+  .top-band{background:linear-gradient(135deg,var(--navy-dark) 0%,var(--navy) 60%,var(--navy-mid) 100%);padding:2.5rem 1.25rem 5rem;text-align:center;color:#fff;}
+  .top-band img{height:64px;width:auto;object-fit:contain;margin-bottom:1rem;background:#fff;border-radius:10px;padding:8px 14px;}
+  .top-band h1{font-size:22px;font-weight:700;margin-bottom:6px;}
+  .top-band p{font-size:14px;opacity:0.9;max-width:480px;margin:0 auto;}
+  .wrap{max-width:640px;margin:-3.5rem auto 3rem;padding:0 1.25rem;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.75rem 1.5rem;margin-bottom:1.25rem;box-shadow:0 4px 16px rgba(27,47,94,0.08);}
+  .card h2{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:1.1rem;padding-bottom:0.6rem;border-bottom:2px solid var(--cream);}
+  .form-group{margin-bottom:1.1rem;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.9rem;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+  label .req{color:var(--orange);}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px;font-weight:400;}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);font-family:inherit;transition:border-color .15s,box-shadow .15s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.12);}
+  textarea{resize:vertical;min-height:90px;}
+  .radio-group{display:flex;flex-direction:column;gap:8px;}
+  .radio-opt{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;}
+  .radio-opt:hover{border-color:var(--navy-mid);background:var(--navy-light);}
+  .radio-opt.checked{border-color:var(--orange);background:#fdf3ee;}
+  .radio-opt input{width:auto;margin-top:3px;}
+  .radio-opt span{font-size:14px;}
+  .video-extra{display:none;margin-top:0.9rem;padding-top:0.9rem;border-top:1px dashed var(--border);}
+  .video-extra.show{display:block;}
+  .auth-box{background:var(--navy-light);border:1px solid #c9d6ef;border-radius:10px;padding:1rem 1.1rem;display:flex;gap:10px;align-items:flex-start;}
+  .auth-box input{width:auto;margin-top:3px;}
+  .auth-box label{font-weight:500;color:var(--text);font-size:13px;margin:0;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:13px 20px;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange) 0%,#d4693d 100%);color:#fff;box-shadow:0 2px 8px rgba(193,82,42,.35);}
+  .btn-primary:hover{background:linear-gradient(135deg,var(--orange-dark),var(--orange));}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+  .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;display:none;}
+  #page-success{display:none;text-align:center;padding:3rem 1.5rem;}
+  #page-success .icon{font-size:52px;margin-bottom:1rem;}
+  #page-success h2{font-size:20px;color:var(--navy);margin-bottom:0.6rem;}
+  #page-success p{color:var(--muted);max-width:420px;margin:0 auto;}
+  #page-form.hidden{display:none;}
+  .footer-note{text-align:center;font-size:12px;color:var(--muted);padding:1rem 1.5rem 2rem;}
+</style>
+</head>
+<body>
+
+<div class="top-band">
+  <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+  <h1>Tu historia puede inspirar a otros</h1>
+  <p>Gracias por tomarte unos minutos para compartirla con nosotros. Tu testimonio nos ayuda a mostrarle a quienes invierten en el Fondo de Becas el fruto real de su generosidad.</p>
+</div>
+
+<div class="wrap">
+
+  <div id="alert-box" class="alert"></div>
+
+  <form id="page-form" onsubmit="return false;">
+
+    <div class="card">
+      <h2>1. Sobre ti</h2>
+      <div class="form-group">
+        <label>Nombre completo <span class="req">*</span></label>
+        <input type="text" id="nombre_completo" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Programa de estudios en ESEPA</label>
+          <input type="text" id="programa" placeholder="Ej. Bachillerato en Teología">
+        </div>
+        <div class="form-group">
+          <label>Iglesia local a la que perteneces</label>
+          <input type="text" id="iglesia">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="email">
+        </div>
+        <div class="form-group">
+          <label>Teléfono / WhatsApp</label>
+          <input type="tel" id="telefono">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Tu historia</h2>
+      <div class="form-group">
+        <label>Cuéntanos brevemente quién eras antes de comenzar tus estudios en ESEPA (tu contexto, tu iglesia, tu llamado)</label>
+        <textarea id="contexto_previo"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Cómo te enteraste de la beca de ESEPA y qué significó para ti poder recibirla?</label>
+        <textarea id="significado_beca"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Qué diferencia ha hecho tu formación en ESEPA en tu manera de servir, enseñar o pastorear?</label>
+        <textarea id="diferencia_formacion"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Cuéntanos una experiencia concreta — una clase, un profesor, un momento — que haya marcado tu formación</label>
+        <textarea id="experiencia_marcante"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Si pudieras decirle algo directamente a la persona o iglesia que ayudó a financiar tu beca, ¿qué le dirías?</label>
+        <textarea id="mensaje_donante"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Una frase para citar</h2>
+      <div class="form-group">
+        <label>Resume en una sola frase corta lo que la beca de ESEPA hizo posible en tu vida</label>
+        <p class="hint" style="margin-top:-4px;margin-bottom:8px;">Esta frase podría usarse tal cual en materiales de la campaña.</p>
+        <input type="text" id="frase_cita" maxlength="220">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Video y autorización</h2>
+      <div class="form-group">
+        <label>¿Estarías dispuesto/a a grabar un video corto (1–2 minutos) contando tu testimonio?</label>
+        <div class="radio-group" id="video-options">
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="si"><span>Sí, con gusto</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="tal_vez"><span>Tal vez, me gustaría más información</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="escrito_solamente"><span>Prefiero no grabar video, pero autorizo el uso de mi testimonio escrito</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="no_participa"><span>Prefiero no participar</span></label>
+        </div>
+      </div>
+
+      <div class="video-extra" id="video-extra">
+        <div class="form-group">
+          <label>¿Cuál es la mejor forma de coordinar contigo?</label>
+          <select id="video_medio_contacto">
+            <option value="">Selecciona una opción</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="llamada">Llamada telefónica</option>
+            <option value="correo">Correo electrónico</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Un horario o días aproximados que te funcionen</label>
+          <input type="text" id="video_horario" placeholder="Ej. tardes entre semana, sábados en la mañana...">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1.1rem;">
+        <div class="auth-box">
+          <input type="checkbox" id="autoriza_uso">
+          <label for="autoriza_uso">Autorizo a Seminario ESEPA a usar mi testimonio (escrito, fotografía y/o video, según lo que haya indicado arriba) en materiales de comunicación, redes sociales y campañas de recaudación de fondos. <span class="req">*</span></label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-submit" onclick="enviarTestimonio()">Enviar mi testimonio</button>
+  </form>
+
+  <div id="page-success">
+    <div class="icon">🙏</div>
+    <h2>¡Gracias por compartir tu historia!</h2>
+    <p>Tu testimonio fue recibido. Es una bendición saber cómo Dios ha usado tu formación en ESEPA — pronto nos pondremos en contacto si corresponde coordinar el video.</p>
+  </div>
+
+</div>
+
+<p class="footer-note">Seminario ESEPA — Escuela de Estudios Pastorales · San José, Costa Rica</p>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+document.querySelectorAll('#video-options input[type=radio]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    document.querySelectorAll('#video-options .radio-opt').forEach(el=>el.classList.remove('checked'));
+    r.closest('.radio-opt').classList.add('checked');
+    const extra = document.getElementById('video-extra');
+    if (r.value === 'si' || r.value === 'tal_vez') extra.classList.add('show');
+    else extra.classList.remove('show');
+  });
+});
+
+function showAlert(msg){
+  const el = document.getElementById('alert-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function clearAlert(){
+  document.getElementById('alert-box').style.display = 'none';
+}
+
+async function enviarTestimonio(){
+  clearAlert();
+  const nombre_completo = document.getElementById('nombre_completo').value.trim();
+  const autoriza_uso = document.getElementById('autoriza_uso').checked;
+  const disposicionEl = document.querySelector('input[name="disposicion_video"]:checked');
+
+  if (!nombre_completo) { showAlert('Por favor escribe tu nombre completo.'); return; }
+  if (!autoriza_uso) { showAlert('Para poder usar tu testimonio necesitamos tu autorización — por favor marca la casilla al final del formulario.'); return; }
+
+  const payload = {
+    nombre_completo,
+    programa: document.getElementById('programa').value.trim() || null,
+    iglesia: document.getElementById('iglesia').value.trim() || null,
+    email: document.getElementById('email').value.trim() || null,
+    telefono: document.getElementById('telefono').value.trim() || null,
+    contexto_previo: document.getElementById('contexto_previo').value.trim() || null,
+    significado_beca: document.getElementById('significado_beca').value.trim() || null,
+    diferencia_formacion: document.getElementById('diferencia_formacion').value.trim() || null,
+    experiencia_marcante: document.getElementById('experiencia_marcante').value.trim() || null,
+    mensaje_donante: document.getElementById('mensaje_donante').value.trim() || null,
+    frase_cita: document.getElementById('frase_cita').value.trim() || null,
+    disposicion_video: disposicionEl ? disposicionEl.value : null,
+    video_medio_contacto: document.getElementById('video_medio_contacto').value || null,
+    video_horario: document.getElementById('video_horario').value.trim() || null,
+    autoriza_uso
+  };
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  const { error } = await sb.from('testimonios').insert(payload);
+
+  btn.disabled = false; btn.textContent = 'Enviar mi testimonio';
+
+  if (error) {
+    showAlert('Hubo un problema al enviar tu testimonio. Por favor intenta de nuevo en unos minutos.');
+    console.error(error);
+    return;
+  }
+
+  document.getElementById('page-form').classList.add('hidden');
+  document.getElementById('page-success').style.display = 'block';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
