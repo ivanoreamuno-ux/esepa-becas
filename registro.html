@@ -132,6 +132,15 @@
       <p style="font-size:12px;color:var(--muted)" id="masivo-count"></p>
     </div>
     <div id="lista-notificaciones"><div class="empty"><div class="empty-icon">📧</div><h3>Cargando...</h3></div></div>
+
+    <!-- CORREOS FALLIDOS -->
+    <div id="card-correos-fallidos" style="display:none">
+      <div class="card" style="border-left:4px solid var(--danger);margin-top:1.25rem">
+        <div class="card-title" style="color:var(--danger)">⚠ Correos fallidos recientes</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Estos envíos no llegaron a su destinatario. Revisá el motivo y reintentá.</p>
+        <div id="lista-correos-fallidos"></div>
+      </div>
+    </div>
   </div>
 
   <div id="tab-matricula" class="page">
@@ -407,6 +416,56 @@ function renderNotificaciones(){
   const c=document.getElementById('lista-notificaciones');
   if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83d\udcad</div><h3>Sin becas pendientes de notificacion</h3></div>';return;}
   c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Ingresado Q10</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.procesado_q10_en)+'</td><td style="display:flex;gap:6px;padding:8px 10px"><button class="btn btn-secondary btn-sm" onclick="abrirMod(\''+s.id+'\')">Modificar monto</button><button class="btn btn-navy btn-sm" onclick="abrirNotifInd(\''+s.id+'\')">\ud83d\udce7 Notificar</button></td></tr>').join('')+'</tbody></table></div>';
+  cargarCorreosFallidos();
+}
+
+async function cargarCorreosFallidos(){
+  const{data}=await sb.from('correos_enviados').select('*,solicitudes(periodo,programa)').eq('estado_envio','fallido').order('ultimo_intento_en',{ascending:false}).limit(20);
+  const card=document.getElementById('card-correos-fallidos');
+  const c=document.getElementById('lista-correos-fallidos');
+  if(!data||!data.length){card.style.display='none';return;}
+  card.style.display='block';
+  c.innerHTML=data.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+    <div>
+      <strong style="font-size:13px">${f.destinatario_nombre}</strong>
+      <span style="font-size:11px;color:var(--muted);margin-left:6px">${f.solicitudes?.periodo||''}</span>
+      <div style="font-size:11px;color:var(--danger);margin-top:2px">${f.error_detalle||'Error desconocido'} · ${f.intentos} intento${f.intentos!==1?'s':''}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="reintentarCorreo('${f.id}','${f.solicitud_id}')">↻ Reintentar</button>
+  </div>`).join('');
+}
+
+async function reintentarCorreo(correoId,solicitudId){
+  const{data:correo}=await sb.from('correos_enviados').select('*').eq('id',correoId).single();
+  if(!correo)return;
+  const solicitud=todasSolicitudes.find(s=>s.id===solicitudId);
+  if(!solicitud){showAlert('No se encontró la solicitud original. Reintentá desde el detalle de notificación.','danger');return;}
+
+  const estudianteId=solicitud.perfiles?.id||solicitud.estudiante_id;
+  const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+  const email=emailData||correo.destinatario_email;
+
+  if(!email||email==='sin-correo'){showAlert('Este estudiante aún no tiene correo registrado en su perfil.','danger');return;}
+
+  try{
+    await llamarEdgeFunction(email,correo.destinatario_nombre,correo.asunto,correo.cuerpo);
+    await sb.from('correos_enviados').update({
+      estado_envio:'enviado',destinatario_email:email,error_detalle:null,
+      intentos:correo.intentos+1,ultimo_intento_en:new Date().toISOString()
+    }).eq('id',correoId);
+    if(solicitud.estado==='procesada_q10'){
+      await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',solicitudId);
+    }
+    showAlert('✓ Reintento exitoso. Correo enviado.','success');
+    await cargarTodo();
+  }catch(e){
+    await sb.from('correos_enviados').update({
+      estado_envio:'fallido',error_detalle:e.message,
+      intentos:correo.intentos+1,ultimo_intento_en:new Date().toISOString()
+    }).eq('id',correoId);
+    showAlert('El reintento también falló: '+e.message,'danger');
+    await cargarCorreosFallidos();
+  }
 }
 
 function renderMatricula(){
@@ -477,30 +536,43 @@ async function enviarNotifInd(){
   const cuerpo=document.getElementById('mni-cuerpo').value.trim();
   if(!asunto||!cuerpo){document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Completá asunto y cuerpo.</div>';return;}
   const btn=document.getElementById('btn-env-notif');btn.textContent='Enviando...';btn.disabled=true;
+
+  const estudianteId=solicitudActual.perfiles?.id||solicitudActual.estudiante_id;
+  const nombreEst=solicitudActual.perfiles?.nombre_completo||'';
+  const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+  const emailDestinatario=emailData||'';
+
+  if(!emailDestinatario){
+    await sb.from('correos_enviados').insert({
+      solicitud_id:solicitudActual.id,destinatario_email:'sin-correo',destinatario_nombre:nombreEst,
+      asunto,cuerpo,enviado_por:currentUser.id,estado_envio:'fallido',
+      error_detalle:'No se encontró correo registrado para este estudiante.',intentos:1,ultimo_intento_en:new Date().toISOString()
+    });
+    document.getElementById('alert-mni').innerHTML='<div class="alert alert-warning">⚠ No se encontró el correo del estudiante. Se registró como fallido — revisá su perfil.</div>';
+    btn.textContent='📧 Enviar correo';btn.disabled=false;
+    return;
+  }
+
   try{
-    // Obtener correo real del estudiante
-    const estudianteId=solicitudActual.perfiles?.id||solicitudActual.estudiante_id;
-    const{data:userData}=await sb.auth.admin?sb.auth.admin.getUserById(estudianteId):{data:null};
-    // Fallback: buscar en tabla auth via RPC o usar correo guardado
-    let emailDestinatario='';
-    // Intentamos con la vista del sistema
-    const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
-    emailDestinatario=emailData||solicitudActual.estudiante_email||'';
-    if(!emailDestinatario){
-      // Si no tenemos el correo, igual registramos pero avisamos
-      document.getElementById('alert-mni').innerHTML='<div class="alert alert-warning">⚠ No se encontró el correo del estudiante. El correo fue registrado pero no enviado. Agregá el correo manualmente.</div>';
-      btn.textContent='📧 Enviar correo';btn.disabled=false;
-      await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:'sin-correo',destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
-      return;
-    }
-    await llamarEdgeFunction(emailDestinatario,solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo);
-    await sb.from('correos_enviados').insert({solicitud_id:solicitudActual.id,destinatario_email:emailDestinatario,destinatario_nombre:solicitudActual.perfiles?.nombre_completo||'',asunto,cuerpo,enviado_por:currentUser.id});
+    await llamarEdgeFunction(emailDestinatario,nombreEst,asunto,cuerpo);
+    // Solo si llamarEdgeFunction NO lanzó error, se considera entregado
+    await sb.from('correos_enviados').insert({
+      solicitud_id:solicitudActual.id,destinatario_email:emailDestinatario,destinatario_nombre:nombreEst,
+      asunto,cuerpo,enviado_por:currentUser.id,estado_envio:'enviado',intentos:1,ultimo_intento_en:new Date().toISOString()
+    });
     await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',solicitudActual.id);
     btn.textContent='📧 Enviar correo';btn.disabled=false;
     closeModal('modal-notif-ind');showAlert('✓ Correo enviado y estudiante notificado correctamente.','success');await cargarTodo();
   }catch(err){
+    // Registrar el FALLO explícitamente — esto es lo que antes no pasaba
+    await sb.from('correos_enviados').insert({
+      solicitud_id:solicitudActual.id,destinatario_email:emailDestinatario,destinatario_nombre:nombreEst,
+      asunto,cuerpo,enviado_por:currentUser.id,estado_envio:'fallido',
+      error_detalle:err.message,intentos:1,ultimo_intento_en:new Date().toISOString()
+    });
     btn.textContent='📧 Enviar correo';btn.disabled=false;
-    document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">Error al enviar: '+err.message+'</div>';
+    document.getElementById('alert-mni').innerHTML='<div class="alert alert-danger">❌ El correo NO se pudo enviar: '+err.message+'. Quedó registrado como fallido — podés reintentar desde la pestaña de Notificaciones.</div>';
+    // NO cerramos el modal ni avanzamos el estado — el estudiante no fue notificado realmente
   }
 }
 
@@ -513,29 +585,54 @@ async function enviarMasivo(){
   if(!pend.length){showAlert('No hay becas pendientes de notificación.','warning');return;}
   if(!confirm('¿Enviás notificación a '+pend.length+' estudiante'+(pend.length!==1?'s':'')+' por correo?'))return;
   const btn=document.getElementById('btn-masivo');btn.disabled=true;
-  let ok=0,errores=0;
+  let ok=0,fallidos=0;
+  const nombresFallidos=[];
   for(const s of pend){
     const asunto=procVar(pl.asunto,s);
     const cuerpo=procVar(pl.cuerpo,s);
     const nombre=s.perfiles?.nombre_completo||'';
     const estudianteId=s.perfiles?.id||s.estudiante_id;
+    const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+    const email=emailData||'';
+
+    if(!email){
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:'sin-correo',destinatario_nombre:nombre,asunto,cuerpo,
+        enviado_por:currentUser.id,estado_envio:'fallido',error_detalle:'Sin correo registrado',
+        intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+      fallidos++;nombresFallidos.push(nombre);
+      btn.textContent='Enviando... ('+(ok+fallidos)+'/'+pend.length+')';
+      continue; // NO avanza el estado — sigue como procesada_q10 para reintento
+    }
+
     try{
-      // Buscar correo del estudiante via RPC
-      const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
-      const email=emailData||'';
-      if(email){
-        await llamarEdgeFunction(email,nombre,asunto,cuerpo);
-        await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombre,asunto,cuerpo,enviado_por:currentUser.id});
-      } else {
-        await sb.from('correos_enviados').insert({solicitud_id:s.id,destinatario_email:'sin-correo',destinatario_nombre:nombre,asunto,cuerpo,enviado_por:currentUser.id});
-      }
+      await llamarEdgeFunction(email,nombre,asunto,cuerpo);
+      // Solo llegamos aquí si el envío fue confirmado exitoso
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombre,asunto,cuerpo,
+        enviado_por:currentUser.id,estado_envio:'enviado',intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
       await sb.from('solicitudes').update({estado:'notificado',notificado_en:new Date().toISOString(),notificado_por:currentUser.id}).eq('id',s.id);
       ok++;
-      btn.textContent='Enviando... ('+ok+'/'+pend.length+')';
-    }catch(e){errores++;console.error('Error con '+nombre+':',e);}
+    }catch(e){
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombre,asunto,cuerpo,
+        enviado_por:currentUser.id,estado_envio:'fallido',error_detalle:e.message,
+        intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+      fallidos++;nombresFallidos.push(nombre);
+      console.error('Error con '+nombre+':',e);
+      // NO avanza el estado — la solicitud sigue en procesada_q10, lista para reintentar
+    }
+    btn.textContent='Enviando... ('+(ok+fallidos)+'/'+pend.length+')';
   }
   btn.disabled=false;btn.textContent='📧 Notificar a todos los pendientes';
-  showAlert('✓ '+ok+' correo'+(ok!==1?'s':'')+' enviado'+(ok!==1?'s':'')+(errores>0?' · '+errores+' con error':'')+'.','success');
+  if(fallidos===0){
+    showAlert('✓ '+ok+' correo'+(ok!==1?'s':'')+' enviado'+(ok!==1?'s':'')+' correctamente.','success');
+  } else {
+    showAlert('⚠ '+ok+' enviado'+(ok!==1?'s':'')+' · '+fallidos+' fallido'+(fallidos!==1?'s':'')+' ('+nombresFallidos.join(', ')+'). Las solicitudes fallidas permanecen en "En Q10" para reintentar.','warning');
+  }
   await cargarTodo();
 }
 

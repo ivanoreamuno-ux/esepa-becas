@@ -96,7 +96,54 @@
   .text-muted { color:var(--muted); font-size:13px; }
   .mt-1 { margin-top:0.5rem; } .mt-2 { margin-top:1rem; } .mt-3 { margin-top:1.5rem; }
   .flex-between { display:flex; align-items:center; justify-content:space-between; }
-  @media (max-width:520px) { .form-row { grid-template-columns:1fr; } .stats-grid { grid-template-columns:1fr; } .tab { padding:10px 10px; font-size:12px; } }
+  @media (max-width:520px) {
+    .form-row { grid-template-columns:1fr; }
+    .stats-grid { grid-template-columns:1fr; }
+    .tab { padding:10px 8px; font-size:11px; }
+    .container { padding:1rem 0.85rem; }
+
+    /* Botones — área táctil mínima de 44px en móvil */
+    .btn { padding:12px 18px; font-size:15px; min-height:44px; }
+    .btn-sm { padding:8px 12px; font-size:13px; min-height:36px; }
+
+    /* Textareas de las preguntas ministeriales — más cómodas para escribir en celular */
+    .pregunta-ministerial textarea { font-size:16px; min-height:140px; } /* 16px evita zoom automático de iOS */
+    .pregunta-ministerial { padding:1rem; }
+    .pregunta-num { width:24px; height:24px; font-size:11px; }
+
+    /* Inputs en general — 16px previene el zoom automático de Safari iOS */
+    input, select, textarea { font-size:16px; }
+
+    /* Input de archivo (carta pastoral) — más alto, más fácil de tocar */
+    #sol-carta-file { padding:14px 10px; font-size:14px; }
+
+    /* Foto de perfil — reorganizar verticalmente en pantallas angostas */
+    #tab-perfil .card > div[style*="display:flex"][style*="align-items:center"] {
+      flex-direction: column;
+      text-align: center;
+      gap: 0.85rem !important;
+    }
+
+    /* Requisito de beca (caja azul) — texto más compacto */
+    .requisito-beca { padding:1rem; }
+    .requisito-beca h3 { font-size:13px; }
+    .requisito-beca p { font-size:12px; }
+
+    /* Modal de carta personalizada — ancho completo con márgenes seguros */
+    div[style*="max-width:500px"] { max-width:92vw !important; }
+
+    /* Tabla de costos en admin/comité — scroll horizontal en vez de overflow roto */
+    table { font-size:12px; }
+    .card { padding:1rem; }
+
+    /* Navegación superior — nombre se trunca si es muy largo */
+    .nav-user span, #nav-nombre { max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; }
+  }
+
+  @media (max-width:360px) {
+    .tab { font-size:10px; padding:8px 4px; }
+    .hero, .auth-card { padding:1.5rem 1.25rem; }
+  }
 </style>
 </head>
 <body>

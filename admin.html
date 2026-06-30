@@ -128,6 +128,7 @@
       <div class="sidebar-item" onclick="showAdminPage('fondos')"><span>💰</span> Fondos de Becas</div>
       <div class="sidebar-item" onclick="showAdminPage('estudiantes')"><span>👥</span> Estudiantes</div>
       <div class="sidebar-item" onclick="showAdminPage('reportes')"><span>📈</span> Reportes</div>
+      <div class="sidebar-item" onclick="showAdminPage('historico')"><span>🗓️</span> Historial Multi-año</div>
     </div>
     <div class="main">
       <div id="adm-dashboard" class="page active">
@@ -225,6 +226,29 @@
             <thead><tr><th>Estudiante</th><th>Sexo</th><th>País</th><th>Programa</th><th>Ministerio</th><th>Dedicación</th><th>Fondo</th><th>Monto</th><th>Estado</th></tr></thead>
             <tbody id="rep-tabla"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- HISTORIAL MULTI-AÑO -->
+      <div id="adm-historico" class="page">
+        <div class="page-title">Historial Multi-año</div>
+        <div class="page-sub" style="color:var(--muted);font-size:13px;margin-bottom:1.25rem">Trayectoria completa de becas de un estudiante a lo largo de los años, o tendencias institucionales por año.</div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:1rem">🔍 Buscar estudiante</div>
+          <div style="position:relative">
+            <input type="text" id="hist-buscar" placeholder="Escribí el nombre del estudiante..." oninput="buscarEstudianteHistorico()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <div id="hist-resultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:260px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:50"></div>
+          </div>
+        </div>
+
+        <div id="hist-perfil-card" style="display:none"></div>
+        <div id="hist-linea-tiempo"></div>
+
+        <div class="card" style="margin-top:1.5rem">
+          <div class="card-title" style="margin-bottom:1rem">📊 Tendencias institucionales por año</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Se agrupa automáticamente según el año detectado en el nombre de cada período (ej: "IIIC2026" → 2026).</p>
+          <div id="hist-resumen-anual"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
         </div>
       </div>
     </div>
@@ -338,13 +362,14 @@ async function adminLogout() { await sb.auth.signOut(); window.location.href='lo
 function showApp() { document.getElementById('page-auth').style.display='none'; document.getElementById('page-app').style.display='block'; cargarDashboard(); }
 
 function showAdminPage(page) {
-  document.querySelectorAll('.sidebar-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','solicitudes','fondos','estudiantes','reportes'][i]===page));
+  document.querySelectorAll('.sidebar-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','solicitudes','fondos','estudiantes','reportes','historico'][i]===page));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('adm-'+page).classList.add('active');
   if (page==='solicitudes') cargarSolicitudes();
   else if (page==='fondos') cargarFondos();
   else if (page==='estudiantes') cargarEstudiantes();
   else if (page==='reportes') inicializarReportes();
+  else if (page==='historico') inicializarHistorico();
   else cargarDashboard();
 }
 
@@ -607,6 +632,115 @@ function filtrarEstudiantes() {
 function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
 function closeModal(id){document.getElementById(id).classList.remove('open');const a=document.getElementById('alert-modal');if(a)a.innerHTML='';}
 function showAlert(zone,msg,type){const el=document.getElementById('alert-'+zone);if(!el)return;el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',5000);}
+
+// ─── HISTORIAL MULTI-AÑO ─────────────────────────────────────────────────────
+let busquedaHistTimeout=null;
+let estudianteHistoricoActual=null;
+
+async function inicializarHistorico(){
+  document.getElementById('hist-perfil-card').style.display='none';
+  document.getElementById('hist-perfil-card').innerHTML='';
+  document.getElementById('hist-linea-tiempo').innerHTML='';
+  document.getElementById('hist-buscar').value='';
+  await cargarResumenAnual();
+}
+
+function buscarEstudianteHistorico(){
+  clearTimeout(busquedaHistTimeout);
+  const q=document.getElementById('hist-buscar').value.trim();
+  const resultados=document.getElementById('hist-resultados');
+  if(q.length<2){resultados.style.display='none';resultados.innerHTML='';return;}
+  busquedaHistTimeout=setTimeout(async()=>{
+    const{data}=await sb.from('vista_historico_estudiante').select('*').ilike('nombre_completo','%'+q+'%').limit(8);
+    if(!data||!data.length){resultados.innerHTML='<div style="padding:10px;font-size:13px;color:var(--muted)">Sin resultados.</div>';resultados.style.display='block';return;}
+    resultados.innerHTML=data.map(e=>'<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:10px" onmouseover="this.style.background=\'var(--brand-light)\'" onmouseout="this.style.background=\'\'" onclick=\'seleccionarEstudianteHistorico('+JSON.stringify(JSON.stringify(e))+')\'>'+
+      '<div style="width:32px;height:32px;border-radius:50%;background:var(--brand-light);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(e.foto_url?'<img src="'+e.foto_url+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:14px">👤</span>')+'</div>'+
+      '<div><strong>'+e.nombre_completo+'</strong><br><span style="color:var(--muted);font-size:11px">'+e.total_solicitudes+' solicitud'+(e.total_solicitudes!==1?'es':'')+' · ₡'+(e.monto_total_historico||0).toLocaleString('es-CR')+' histórico</span></div>'
+    +'</div>').join('');
+    resultados.style.display='block';
+  },300);
+}
+
+async function seleccionarEstudianteHistorico(jsonStr){
+  const e=JSON.parse(jsonStr);
+  estudianteHistoricoActual=e;
+  document.getElementById('hist-resultados').style.display='none';
+  document.getElementById('hist-buscar').value=e.nombre_completo;
+
+  const card=document.getElementById('hist-perfil-card');
+  card.style.display='block';
+  card.innerHTML=`<div class="card" style="border-left:4px solid var(--brand)">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.25rem">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--brand-light);border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${e.foto_url?'<img src="'+e.foto_url+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:26px;color:var(--brand-mid)">👤</span>'}
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--brand)">${e.nombre_completo}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">${e.iglesia||'Sin iglesia registrada'} · ${e.pais||'—'}</div>
+        <div style="font-size:12px;color:var(--muted)">Ingresó: ${e.cuatrimestre_ingreso||'No registrado'} · Primer período de beca: ${e.primer_periodo||'—'}</div>
+      </div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat-card"><div class="stat-label">Total solicitudes</div><div class="stat-value">${e.total_solicitudes}</div></div>
+      <div class="stat-card" style="border-top-color:var(--success)"><div class="stat-label">Aprobadas</div><div class="stat-value" style="color:var(--success)">${e.total_aprobadas}</div></div>
+      <div class="stat-card" style="border-top-color:var(--danger)"><div class="stat-label">Rechazadas</div><div class="stat-value" style="color:var(--danger)">${e.total_rechazadas}</div></div>
+      <div class="stat-card" style="border-top-color:var(--success)"><div class="stat-label">Matriculado</div><div class="stat-value" style="color:var(--success)">${e.total_matriculado_exitoso}</div></div>
+      <div class="stat-card"><div class="stat-label">Total histórico</div><div class="stat-value" style="font-size:15px;padding-top:4px">₡${(e.monto_total_historico||0).toLocaleString('es-CR')}</div></div>
+    </div>
+  </div>`;
+
+  await cargarLineaTiempo(e.estudiante_id);
+}
+
+async function cargarLineaTiempo(estudianteId){
+  const{data}=await sb.rpc('get_historico_estudiante',{p_estudiante_id:estudianteId});
+  const c=document.getElementById('hist-linea-tiempo');
+  if(!data||!data.length){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;text-align:center">Sin solicitudes registradas para este estudiante.</p></div>';return;}
+
+  c.innerHTML=`<div class="card">
+    <div class="card-title" style="margin-bottom:1rem">📅 Línea de tiempo — toda la trayectoria</div>
+    <div style="position:relative;padding-left:24px">
+      <div style="position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--border)"></div>
+      ${data.map((s,i)=>{
+        const colorEstado=['matriculado','aplicada'].includes(s.estado)?'var(--success)':s.estado==='rechazada'||s.estado==='no_matriculado'?'var(--danger)':'var(--warning)';
+        return `<div style="position:relative;margin-bottom:${i<data.length-1?'1.25rem':'0'};padding-left:18px">
+          <div style="position:absolute;left:-21px;top:4px;width:14px;height:14px;border-radius:50%;background:${colorEstado};border:2px solid white;box-shadow:0 0 0 2px ${colorEstado}"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+            <div>
+              <strong style="color:var(--brand)">${s.periodo}</strong>
+              <span style="font-size:12px;color:var(--muted);margin-left:8px">${(s.programa||'').replace('Bachillerato en ','Bac. ').replace('Maestría en ','Mae. ').replace('Diplomado en ','Dip. ')}</span>
+            </div>
+            ${badgeHtml(s.estado)}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            ${s.monto_asignado?'Beca: <strong style="color:var(--success)">₡'+s.monto_asignado.toLocaleString('es-CR')+'</strong>'+(s.fondo_nombre?' ('+s.fondo_nombre+')':'')+(s.porcentaje_cubierto?' · '+s.porcentaje_cubierto+'% del costo':''):'Sin monto asignado'}
+            ${s.confirmacion_matricula?' · '+(s.confirmacion_matricula==='matriculado'?'✓ Matriculado':'✗ No matriculado'):''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Solicitado: ${new Date(s.solicitado_en).toLocaleDateString('es-CR')}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+async function cargarResumenAnual(){
+  const{data}=await sb.from('vista_resumen_anual').select('*');
+  const c=document.getElementById('hist-resumen-anual');
+  if(!data||!data.length){c.innerHTML='<p style="color:var(--muted);font-size:13px">Sin datos suficientes para mostrar tendencias.</p>';return;}
+  const maxMonto=Math.max(...data.map(a=>a.monto_total_anual||0))||1;
+  c.innerHTML=`<table>
+    <thead><tr><th>Año</th><th>Estudiantes únicos</th><th>Solicitudes</th><th>Aprobadas</th><th>Mujeres</th><th>Monto total</th><th></th></tr></thead>
+    <tbody>${data.map(a=>`<tr>
+      <td><strong style="color:var(--brand)">${a.anio}</strong></td>
+      <td>${a.estudiantes_unicos}</td>
+      <td>${a.total_solicitudes}</td>
+      <td style="color:var(--success);font-weight:600">${a.total_aprobadas}</td>
+      <td>${a.mujeres_beneficiadas}</td>
+      <td style="font-weight:600">₡${(a.monto_total_anual||0).toLocaleString('es-CR')}</td>
+      <td style="min-width:100px"><div style="background:var(--border);border-radius:4px;height:6px"><div style="background:linear-gradient(90deg,var(--brand),var(--brand-mid));border-radius:4px;height:6px;width:${Math.round(((a.monto_total_anual||0)/maxMonto)*100)}%"></div></div></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
 
 init();
 </script>
