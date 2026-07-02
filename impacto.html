@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tu historia de impacto — Seminario ESEPA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --navy:#1B2F5E; --navy-dark:#15244a; --navy-mid:#2c4a7c; --navy-light:#eef2f9;
+    --orange:#C85A27; --orange-dark:#9e3e1e; --cream:#E8D5C4;
+    --surface:#fff; --bg:#f4f6fa; --border:#dce3ef; --text:#1a1f2e; --muted:#5a6478;
+    --danger:#b91c1c; --danger-bg:#fef2f2; --success:#1a7a4a; --success-bg:#e8f5ee;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;min-height:100vh;}
+
+  .top-band{background:linear-gradient(135deg,var(--navy-dark) 0%,var(--navy) 60%,var(--navy-mid) 100%);padding:2.5rem 1.25rem 5.5rem;text-align:center;color:#fff;position:relative;overflow:hidden;}
+  .top-band::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.04);}
+  .top-band::after{content:'';position:absolute;bottom:-60px;left:-30px;width:240px;height:240px;border-radius:50%;background:rgba(200,90,39,0.08);}
+  .top-band img{height:64px;width:auto;object-fit:contain;margin-bottom:1rem;background:#fff;border-radius:10px;padding:8px 14px;position:relative;z-index:1;}
+  .top-band h1{font-size:22px;font-weight:700;margin-bottom:8px;position:relative;z-index:1;}
+  .top-band p{font-size:14px;opacity:0.9;max-width:500px;margin:0 auto;position:relative;z-index:1;}
+  .top-band .verse{font-size:12px;opacity:0.7;margin-top:12px;font-style:italic;position:relative;z-index:1;}
+
+  .progress-bar{height:4px;background:rgba(255,255,255,0.2);position:relative;}
+  .progress-fill{height:100%;background:var(--orange);transition:width 0.4s ease;width:0%;}
+
+  .wrap{max-width:640px;margin:-4rem auto 3rem;padding:0 1.25rem;}
+
+  .section-divider{display:flex;align-items:center;gap:10px;margin:1.75rem 0 1rem;}
+  .section-divider .num{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+  .section-divider .label{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;}
+  .section-divider .line{flex:1;height:1px;background:var(--border);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.75rem 1.5rem;margin-bottom:1rem;box-shadow:0 4px 16px rgba(27,47,94,0.07);}
+  .card.accent{border-left:3px solid var(--orange);}
+
+  .form-group{margin-bottom:1.1rem;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.9rem;}
+  @media(max-width:480px){.form-row{grid-template-columns:1fr;}}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+  label .req{color:var(--orange);}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45;}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);font-family:inherit;transition:border-color .15s,box-shadow .15s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.12);}
+  textarea{resize:vertical;min-height:90px;}
+  input[type=number]{-moz-appearance:textfield;}
+
+  /* Checkboxes para selección múltiple */
+  .check-group{display:flex;flex-direction:column;gap:7px;}
+  .check-opt{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;}
+  .check-opt:hover{border-color:var(--navy-mid);background:var(--navy-light);}
+  .check-opt input{width:auto;margin-top:2px;flex-shrink:0;}
+  .check-opt span{font-size:14px;}
+  .check-opt.checked{border-color:var(--orange);background:#fdf3ee;}
+
+  /* Radios */
+  .radio-group{display:flex;flex-direction:column;gap:7px;}
+  .radio-opt{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;}
+  .radio-opt:hover{border-color:var(--navy-mid);background:var(--navy-light);}
+  .radio-opt input{width:auto;margin-top:3px;flex-shrink:0;}
+  .radio-opt span{font-size:14px;}
+  .radio-opt.checked{border-color:var(--orange);background:#fdf3ee;}
+
+  /* Toggle especial sí/no */
+  .bool-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .bool-opt{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:14px;}
+  .bool-opt:hover{border-color:var(--navy-mid);}
+  .bool-opt input{width:auto;}
+  .bool-opt.checked-yes{border-color:var(--success);background:var(--success-bg);color:var(--success);}
+  .bool-opt.checked-no{border-color:var(--muted);background:var(--bg);}
+
+  .cond-block{display:none;margin-top:0.8rem;padding-top:0.8rem;border-top:1px dashed var(--border);}
+  .cond-block.show{display:block;}
+
+  .auth-box{background:var(--navy-light);border:1px solid #c9d6ef;border-radius:10px;padding:1rem 1.1rem;display:flex;gap:10px;align-items:flex-start;}
+  .auth-box input{width:auto;margin-top:3px;flex-shrink:0;}
+  .auth-box label{font-weight:500;color:var(--text);font-size:13px;margin:0;cursor:pointer;}
+
+  .impact-callout{background:linear-gradient(135deg,#fdf3ee 0%,#fff8f5 100%);border:1px solid #f0ceba;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1rem;display:flex;gap:12px;align-items:flex-start;}
+  .impact-callout .ico{font-size:22px;flex-shrink:0;margin-top:2px;}
+  .impact-callout p{font-size:13px;color:var(--orange-dark);line-height:1.5;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:13px 20px;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange) 0%,#d4693d 100%);color:#fff;box-shadow:0 2px 8px rgba(193,82,42,.35);}
+  .btn-primary:hover:not(:disabled){background:linear-gradient(135deg,var(--orange-dark),var(--orange));transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+
+  .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;display:none;}
+
+  #page-success{display:none;text-align:center;padding:3.5rem 1.5rem;}
+  #page-success .icon{font-size:56px;margin-bottom:1.25rem;}
+  #page-success h2{font-size:21px;color:var(--navy);margin-bottom:0.6rem;font-weight:700;}
+  #page-success p{color:var(--muted);max-width:440px;margin:0 auto;line-height:1.6;}
+  #page-form.hidden{display:none;}
+
+  .footer-note{text-align:center;font-size:12px;color:var(--muted);padding:1rem 1.5rem 2rem;}
+  .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:3px;}
+
+  /* Image upload */
+  .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:1.4rem 1rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--bg);}
+  .upload-zone:hover,.upload-zone.drag{border-color:var(--orange);background:#fdf3ee;}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .upload-zone .ico{font-size:28px;margin-bottom:6px;}
+  .upload-zone p{font-size:13px;color:var(--muted);margin:0;}
+  .upload-zone strong{color:var(--orange);}
+  .img-preview{margin-top:10px;position:relative;display:inline-block;}
+  .img-preview img{max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);object-fit:cover;}
+  .img-preview .remove-btn{position:absolute;top:-8px;right:-8px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .upload-note{font-size:11px;color:var(--muted);margin-top:6px;}
+</style>
+</head>
+<body>
+
+<div class="top-band">
+  <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+  <h1>Tu historia importa</h1>
+  <p>Cuéntanos el antes y el después de tu formación en ESEPA. Tu experiencia puede inspirar a otros y mostrar el impacto real de la formación teológica en la iglesia latinoamericana.</p>
+  <div class="verse">"… a fin de que el hombre de Dios sea perfecto, enteramente preparado para toda buena obra." — 2 Timoteo 3:17</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
+
+<div class="wrap">
+  <div id="alert-box" class="alert"></div>
+
+  <form id="page-form" onsubmit="return false;">
+
+    <!-- ───────── SECCIÓN 1: QUIÉN ERES HOY ───────── -->
+    <div class="section-divider">
+      <div class="num">1</div>
+      <div class="label">Quién eres</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Nombre completo <span class="req">*</span></label>
+        <input type="text" id="nombre_completo" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="email">
+        </div>
+        <div class="form-group">
+          <label>Teléfono / WhatsApp</label>
+          <input type="tel" id="telefono">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>País donde vives y sirves</label>
+          <input type="text" id="pais" placeholder="Costa Rica, Guatemala...">
+        </div>
+        <div class="form-group">
+          <label>Iglesia local a la que perteneces</label>
+          <input type="text" id="iglesia">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>¿Cuál es tu rol en el ministerio hoy? <span class="req">*</span></label>
+        <select id="rol_ministerial_actual" required>
+          <option value="">Selecciona una opción</option>
+          <option value="pastor_principal">Pastor principal</option>
+          <option value="pastor_asociado">Pastor asociado o asistente</option>
+          <option value="lider_laico">Líder laico / anciano / diácono</option>
+          <option value="maestro_biblia">Maestro de Biblia o educación cristiana</option>
+          <option value="misionero">Misionero / plantador de iglesias</option>
+          <option value="consejero">Consejero bíblico</option>
+          <option value="evangelista">Evangelista</option>
+          <option value="docente_teologico">Docente en seminario u otra institución</option>
+          <option value="estudiante_activo">Soy estudiante activo en ESEPA</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Programa(s) que cursaste en ESEPA</label>
+          <select id="programa_esepa">
+            <option value="">Selecciona</option>
+            <option value="certificado">Certificado ministerial</option>
+            <option value="diplomado">Diplomado</option>
+            <option value="bachillerato">Bachillerato en Teología</option>
+            <option value="maestria">Maestría</option>
+            <option value="varios">Varios programas</option>
+            <option value="cursos_libres">Cursos libres / talleres</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>¿Eres graduado de ESEPA?</label>
+          <div class="bool-group" id="egresado-group">
+            <label class="bool-opt" onclick="toggleBool('es_egresado', true, this)"><input type="radio" name="es_egresado" value="true"> Sí, me gradué</label>
+            <label class="bool-opt" onclick="toggleBool('es_egresado', false, this)"><input type="radio" name="es_egresado" value="false"> Cursé pero no me gradué</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Año en que comenzaste en ESEPA</label>
+          <input type="number" id="anio_inicio" placeholder="Ej. 2018" min="1983" max="2026">
+        </div>
+        <div class="form-group">
+          <label>Año en que terminaste o te graduaste</label>
+          <input type="number" id="anio_fin" placeholder="Ej. 2022" min="1983" max="2026">
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── SECCIÓN 2: ANTES DE ESEPA ───────── -->
+    <div class="section-divider">
+      <div class="num">2</div>
+      <div class="label">Antes de ESEPA</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="impact-callout">
+      <div class="ico">⏮</div>
+      <p>Esta sección nos ayuda a entender de dónde venías. No hay respuestas malas ni mínimos de formación previa — queremos saber tu historia real.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Describe tu ministerio o servicio antes de estudiar en ESEPA — ¿qué hacías, dónde servías, cuál era tu situación? <span class="req">*</span></label>
+        <textarea id="ministerio_antes" oninput="countChars(this,'cc1')" rows="4"></textarea>
+        <div class="char-count" id="cc1">0 caracteres</div>
+      </div>
+      <div class="form-group">
+        <label>¿Cuál era tu mayor desafío o limitación en el ministerio en esa época?</label>
+        <textarea id="mayor_desafio_antes" rows="3"></textarea>
+        <div class="hint">Por ejemplo: dificultad para predicar con profundidad bíblica, falta de herramientas para aconsejar, inseguridad teológica, desconocimiento del texto original, etc.</div>
+      </div>
+      <div class="form-group">
+        <label>¿Qué te llevó a buscar formación teológica en ESEPA?</label>
+        <textarea id="por_que_esepa" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Qué barreras tuviste que superar para poder estudiar?</label>
+        <div class="check-group" id="barreras-check">
+          <label class="check-opt"><input type="checkbox" value="economica" onchange="syncBarreras()"><span>Económica (costo de los cursos)</span></label>
+          <label class="check-opt"><input type="checkbox" value="tiempo"><span>Falta de tiempo (trabajo, familia, ministerio)</span></label>
+          <label class="check-opt"><input type="checkbox" value="distancia"><span>Distancia geográfica</span></label>
+          <label class="check-opt"><input type="checkbox" value="tecnologia"><span>Dificultad con tecnología o plataformas digitales</span></label>
+          <label class="check-opt"><input type="checkbox" value="nivel_academico"><span>Nivel académico previo</span></label>
+          <label class="check-opt"><input type="checkbox" value="familia"><span>Compromisos familiares</span></label>
+          <label class="check-opt"><input type="checkbox" value="ninguna"><span>No tuve barreras significativas</span></label>
+        </div>
+        <div style="margin-top:8px;">
+          <label>¿Algo más que quieras añadir sobre las barreras que enfrentaste?</label>
+          <textarea id="barreras_superadas" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── SECCIÓN 3: LA EXPERIENCIA EN ESEPA ───────── -->
+    <div class="section-divider">
+      <div class="num">3</div>
+      <div class="label">Tu experiencia en ESEPA</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>¿Qué fue lo más valioso de tu formación en ESEPA? (Selecciona todo lo que aplique)</label>
+        <div class="check-group" id="valioso-check">
+          <label class="check-opt"><input type="checkbox" value="calidad_academica"><span>Calidad académica y exigencia teológica</span></label>
+          <label class="check-opt"><input type="checkbox" value="profesores"><span>Calidad y disponibilidad de los profesores</span></label>
+          <label class="check-opt"><input type="checkbox" value="comunidad"><span>La comunidad y el compañerismo con otros estudiantes</span></label>
+          <label class="check-opt"><input type="checkbox" value="flexibilidad"><span>Flexibilidad de horarios y modalidades</span></label>
+          <label class="check-opt"><input type="checkbox" value="accesibilidad_economica"><span>El costo accesible del programa</span></label>
+          <label class="check-opt"><input type="checkbox" value="enfoque_practico"><span>El enfoque práctico y aplicado al ministerio</span></label>
+          <label class="check-opt"><input type="checkbox" value="fundamentos_biblicos"><span>Los fundamentos bíblicos y teológicos sólidos</span></label>
+          <label class="check-opt"><input type="checkbox" value="otro_valioso"><span>Otro</span></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cuéntanos una experiencia concreta — una clase, un profesor, una conversación, un momento — que haya marcado tu formación <span class="req">*</span></label>
+        <textarea id="momento_clave" oninput="countChars(this,'cc2')" rows="4" required></textarea>
+        <div class="char-count" id="cc2">0 caracteres</div>
+        <div class="hint">Esta es la parte más importante para nosotros — sé tan específico/a como quieras.</div>
+      </div>
+      <div class="form-group">
+        <label>¿Qué aprendizaje, herramienta o habilidad fue más transformadora para tu ministerio?</label>
+        <textarea id="aprendizaje_transformador" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Cómo describirías el ambiente y la comunidad de ESEPA a alguien que nunca ha estudiado aquí?</label>
+        <textarea id="descripcion_comunidad" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Foto de tu ministerio <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+        <div class="upload-zone" id="upload-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" id="imagen_file" accept="image/jpeg,image/png,image/webp" onchange="handleFileSelect(event)">
+          <div id="upload-prompt">
+            <div class="ico">📷</div>
+            <p>Arrastra una foto aquí o <strong>haz clic para seleccionarla</strong></p>
+          </div>
+          <div id="img-preview-wrap" class="img-preview" style="display:none;">
+            <img id="img-preview-img" src="" alt="Vista previa">
+            <button type="button" class="remove-btn" onclick="eliminarFoto(event)" title="Quitar foto">×</button>
+          </div>
+        </div>
+        <div class="upload-note">Sube una foto tuya en tu ministerio, iglesia o comunidad. Máximo 5 MB · JPG, PNG o WEBP.</div>
+      </div>
+    </div>
+
+    <!-- ───────── SECCIÓN 4: EL IMPACTO — DESPUÉS DE ESEPA ───────── -->
+    <div class="section-divider">
+      <div class="num">4</div>
+      <div class="label">El impacto</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="impact-callout">
+      <div class="ico">🌱</div>
+      <p>Esta sección es el corazón de tu historia. Queremos ver el <strong>antes y el después</strong> — cómo cambió tu ministerio, tu manera de servir y el impacto en las personas que te rodean.</p>
+    </div>
+
+    <div class="card accent">
+      <div class="form-group">
+        <label>Describe tu ministerio hoy — ¿qué haces, dónde sirves, qué ha cambiado respecto a cuando comenzaste en ESEPA? <span class="req">*</span></label>
+        <textarea id="ministerio_hoy" oninput="countChars(this,'cc3')" rows="5" required></textarea>
+        <div class="char-count" id="cc3">0 caracteres</div>
+      </div>
+      <div class="form-group">
+        <label>¿Qué estás haciendo hoy en tu ministerio que no habrías podido hacer sin la formación en ESEPA?</label>
+        <textarea id="lo_que_no_podria_sin_esepa" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Cuántas personas calculas que son impactadas hoy por tu ministerio — directa o indirectamente? <span class="req">*</span></label>
+        <input type="number" id="personas_impactadas" min="0" max="999999" required placeholder="Escribe un número aproximado">
+        <div class="hint">No necesita ser exacto. Incluye tu congregación, grupos de discipulado, personas que enseñas o aconsejas, etc. Esta cifra nos ayuda a mostrar el efecto multiplicador de la formación.</div>
+      </div>
+      <div class="form-group">
+        <label>¿Has capacitado o discipulado a otras personas usando lo que aprendiste en ESEPA?</label>
+        <div class="bool-group">
+          <label class="bool-opt" onclick="toggleCapacitacion(true, this)"><input type="radio" name="ha_capacitado" value="true"> Sí</label>
+          <label class="bool-opt" onclick="toggleCapacitacion(false, this)"><input type="radio" name="ha_capacitado" value="false"> No</label>
+        </div>
+        <div class="cond-block" id="multiplicacion-extra">
+          <label>Cuéntanos: ¿a cuántas personas, cómo, dónde? (Este es el efecto multiplicador que los donantes necesitan conocer)</label>
+          <textarea id="detalles_multiplicacion" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>¿Qué ha cambiado en tu manera de leer, predicar o enseñar la Biblia?</label>
+        <textarea id="cambio_en_biblia" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Recomendarías ESEPA a un pastor o líder que busca formación?</label>
+        <div class="bool-group">
+          <label class="bool-opt" onclick="toggleRecomendaria(true, this)"><input type="radio" name="recomendaria" value="true"> Sí, con toda seguridad</label>
+          <label class="bool-opt" onclick="toggleRecomendaria(false, this)"><input type="radio" name="recomendaria" value="false"> No tanto</label>
+        </div>
+        <div class="cond-block show" id="recomendaria-extra">
+          <label>¿Por qué?</label>
+          <textarea id="por_que_recomendaria" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── SECCIÓN 5: PARA LA CAMPAÑA ───────── -->
+    <div class="section-divider">
+      <div class="num">5</div>
+      <div class="label">Tu voz en la campaña</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="impact-callout">
+      <div class="ico">📣</div>
+      <p>Esta sección nos ayuda a construir materiales de campaña con tus propias palabras. Estamos buscando iglesias y donantes que inviertan en la formación de más siervos como tú — tu voz es el argumento más poderoso que tenemos.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Si pudieras hablarle directamente a una iglesia o a un donante que está considerando apoyar a ESEPA, ¿qué le dirías?</label>
+        <textarea id="mensaje_para_donante" oninput="countChars(this,'cc4')" rows="4"></textarea>
+        <div class="char-count" id="cc4">0 caracteres</div>
+      </div>
+      <div class="form-group">
+        <label>Resume en <strong>una sola frase corta</strong> lo que ESEPA hizo posible en tu vida y ministerio</label>
+        <input type="text" id="frase_cita" maxlength="240">
+        <div class="hint">Esta frase podría usarse tal cual en materiales gráficos y de campaña, junto a tu nombre.</div>
+      </div>
+      <div class="form-group">
+        <label>¿Hay algo más que quieras compartir que no te hayamos preguntado?</label>
+        <textarea id="algo_mas" rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- ───────── SECCIÓN 6: PARTICIPACIÓN Y AUTORIZACIÓN ───────── -->
+    <div class="section-divider">
+      <div class="num">6</div>
+      <div class="label">Participación y autorización</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>¿Estarías dispuesto/a a grabar un video corto (1–2 minutos) contando tu historia?</label>
+        <div class="radio-group" id="video-options">
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="si"><span>Sí, con gusto</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="tal_vez"><span>Tal vez, me gustaría más información antes de decidir</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="escrito_solamente"><span>Prefiero no grabar video, pero autorizo el uso de mi historia escrita</span></label>
+          <label class="radio-opt"><input type="radio" name="disposicion_video" value="no_participa"><span>Prefiero que esta información sea solo para uso interno de ESEPA</span></label>
+        </div>
+        <div class="cond-block" id="video-extra">
+          <div class="form-row">
+            <div class="form-group">
+              <label>¿Cuál es la mejor forma de coordinar contigo?</label>
+              <select id="video_medio_contacto">
+                <option value="">Selecciona</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="llamada">Llamada telefónica</option>
+                <option value="correo">Correo electrónico</option>
+                <option value="videollamada">Videollamada (Zoom, Meet)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Horario o días que te funcionan</label>
+              <input type="text" id="video_horario" placeholder="Ej. tardes de lunes a miércoles">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <div class="auth-box">
+          <input type="checkbox" id="autoriza_uso">
+          <label for="autoriza_uso">Autorizo a Seminario ESEPA a usar mi historia (escrita, en fotografía y/o en video, según lo que haya indicado arriba) en materiales de comunicación, redes sociales y campañas de recaudación de fondos, mencionando mi nombre y rol ministerial. <span class="req">*</span></label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-submit" onclick="enviarHistoria()">Enviar mi historia</button>
+    <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:12px;">Al enviar, tu historia queda guardada de forma segura en ESEPA.<br>Nos pondremos en contacto contigo si queremos ampliar algo o coordinar el video.</p>
+
+  </form>
+
+  <div id="page-success">
+    <div class="icon">🙌</div>
+    <h2>¡Gracias por compartir tu historia!</h2>
+    <p>Tu historia fue recibida y es un regalo para ESEPA. Ver el antes y el después de quienes han pasado por aquí nos recuerda que la formación teológica sí transforma vidas y multiplica el ministerio. Nos pondremos en contacto si corresponde coordinar el video. Que el Señor siga usando tu ministerio para su gloria.</p>
+  </div>
+</div>
+
+<p class="footer-note">Seminario ESEPA — Escuela de Estudios Pastorales · San José, Costa Rica · esepa.org</p>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+// ── Progress bar ──────────────────────────────────────────
+function updateProgress(){
+  const required = document.querySelectorAll('[required]');
+  let filled = 0;
+  required.forEach(el=>{
+    const v = el.value ? el.value.trim() : '';
+    if(v) filled++;
+  });
+  const radios = ['rol_ministerial_actual','personas_impactadas','momento_clave','ministerio_antes','ministerio_hoy'];
+  const totalFields = required.length;
+  const pct = Math.min(Math.round((filled / totalFields) * 100), 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+document.querySelectorAll('input,textarea,select').forEach(el=>{
+  el.addEventListener('input', updateProgress);
+  el.addEventListener('change', updateProgress);
+});
+
+// ── Char counter ──────────────────────────────────────────
+function countChars(el, id){
+  const n = el.value.length;
+  document.getElementById(id).textContent = n + ' caractere' + (n===1?'':'s');
+}
+
+// ── Check opts visual ─────────────────────────────────────
+document.querySelectorAll('.check-group input[type=checkbox]').forEach(cb=>{
+  cb.addEventListener('change', ()=>{
+    cb.closest('.check-opt').classList.toggle('checked', cb.checked);
+  });
+});
+
+document.querySelectorAll('#video-options input[type=radio]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    document.querySelectorAll('#video-options .radio-opt').forEach(el=>el.classList.remove('checked'));
+    r.closest('.radio-opt').classList.add('checked');
+    const extra = document.getElementById('video-extra');
+    if(r.value==='si'||r.value==='tal_vez') extra.classList.add('show');
+    else extra.classList.remove('show');
+  });
+});
+
+// ── Bool toggles ──────────────────────────────────────────
+function toggleBool(field, val, el){}
+
+function toggleCapacitacion(val, el){
+  document.querySelectorAll('[name=ha_capacitado]').forEach(r=>r.closest('.bool-opt').classList.remove('checked-yes','checked-no'));
+  el.classList.add(val ? 'checked-yes' : 'checked-no');
+  document.getElementById('multiplicacion-extra').classList.toggle('show', val);
+}
+
+function toggleRecomendaria(val, el){
+  document.querySelectorAll('[name=recomendaria]').forEach(r=>r.closest('.bool-opt').classList.remove('checked-yes','checked-no'));
+  el.classList.add(val ? 'checked-yes' : 'checked-no');
+  document.getElementById('recomendaria-extra').classList.toggle('show', true);
+}
+
+// ── Alert ─────────────────────────────────────────────────
+function showAlert(msg){
+  const el=document.getElementById('alert-box');
+  el.textContent=msg; el.style.display='block';
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function clearAlert(){ document.getElementById('alert-box').style.display='none'; }
+
+// ── Get checked values from check groups ──────────────────
+function getChecked(containerId){
+  const checks = document.querySelectorAll('#'+containerId+' input[type=checkbox]:checked');
+  return Array.from(checks).map(c=>c.value);
+}
+
+// ── Image upload helpers ───────────────────────────────────
+let selectedFile = null;
+
+function handleFileSelect(e){ const f=e.target.files[0]; if(f) setFile(f); }
+function handleDragOver(e){ e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function handleDragLeave(){ document.getElementById('upload-zone').classList.remove('drag'); }
+function handleDrop(e){
+  e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag');
+  const f=e.dataTransfer.files[0]; if(f) setFile(f);
+}
+function setFile(file){
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){ showAlert('Solo se aceptan imágenes en formato JPG, PNG o WEBP.'); return; }
+  if(file.size>5*1024*1024){ showAlert('La imagen no puede superar 5 MB.'); return; }
+  selectedFile=file;
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('img-preview-img').src=e.target.result;
+    document.getElementById('upload-prompt').style.display='none';
+    document.getElementById('img-preview-wrap').style.display='inline-block';
+  };
+  r.readAsDataURL(file);
+}
+function eliminarFoto(e){
+  e.stopPropagation(); selectedFile=null;
+  document.getElementById('imagen_file').value='';
+  document.getElementById('img-preview-img').src='';
+  document.getElementById('upload-prompt').style.display='block';
+  document.getElementById('img-preview-wrap').style.display='none';
+}
+async function subirImagen(nombre){
+  if(!selectedFile) return null;
+  const ext=selectedFile.name.split('.').pop().toLowerCase();
+  const safe=nombre.toLowerCase().replace(/[^a-z0-9]/g,'-').slice(0,30);
+  const path=`${safe}-${Date.now()}.${ext}`;
+  const {error}=await sb.storage.from('historias-imagenes').upload(path, selectedFile, {contentType:selectedFile.type, upsert:false});
+  if(error){ console.error('Error imagen:', error); return null; }
+  const {data:u}=sb.storage.from('historias-imagenes').getPublicUrl(path);
+  return u.publicUrl;
+}
+
+// ── Submit ─────────────────────────────────────────────────
+async function enviarHistoria(){
+  clearAlert();
+  const nombre_completo=document.getElementById('nombre_completo').value.trim();
+  const ministerio_antes=document.getElementById('ministerio_antes').value.trim();
+  const momento_clave=document.getElementById('momento_clave').value.trim();
+  const ministerio_hoy=document.getElementById('ministerio_hoy').value.trim();
+  const personas_raw=document.getElementById('personas_impactadas').value;
+  const rol=document.getElementById('rol_ministerial_actual').value;
+  const autoriza_uso=document.getElementById('autoriza_uso').checked;
+  const videoEl=document.querySelector('input[name="disposicion_video"]:checked');
+  const egresadoEl=document.querySelector('input[name="es_egresado"]:checked');
+  const ha_capacitadoEl=document.querySelector('input[name=ha_capacitado]:checked');
+  const recomendariaEl=document.querySelector('input[name=recomendaria]:checked');
+
+  if(!nombre_completo){ showAlert('Por favor escribe tu nombre completo.'); return; }
+  if(!rol){ showAlert('Por favor indica tu rol ministerial actual.'); return; }
+  if(!ministerio_antes){ showAlert('Por favor cuéntanos cómo era tu ministerio antes de ESEPA (Sección 2).'); return; }
+  if(!momento_clave){ showAlert('Por favor cuéntanos un momento o experiencia que marcó tu formación en ESEPA (Sección 3).'); return; }
+  if(!ministerio_hoy){ showAlert('Por favor describe tu ministerio hoy — el "después" de ESEPA (Sección 4).'); return; }
+  if(!personas_raw||isNaN(parseInt(personas_raw))){ showAlert('Por favor indica cuántas personas calculas que impactas con tu ministerio hoy (Sección 4).'); return; }
+  if(!autoriza_uso){ showAlert('Para poder usar tu historia, necesitamos tu autorización — por favor marca la casilla al final del formulario.'); return; }
+
+  const btn=document.getElementById('btn-submit');
+  btn.disabled=true; btn.textContent='Enviando…';
+
+  const imagen_url=await subirImagen(nombre_completo);
+
+  const barreras_extra=document.getElementById('barreras_superadas').value.trim();
+  const barreras_sel=getChecked('barreras-check');
+  const barreras_texto=barreras_sel.length
+    ? barreras_sel.join(', ')+(barreras_extra?'. '+barreras_extra:'')
+    : barreras_extra||null;
+  const lo_mas_valioso=getChecked('valioso-check');
+  const ai=parseInt(document.getElementById('anio_inicio').value);
+  const af=parseInt(document.getElementById('anio_fin').value);
+
+  const payload={
+    nombre_completo,
+    email:document.getElementById('email').value.trim()||null,
+    telefono:document.getElementById('telefono').value.trim()||null,
+    pais:document.getElementById('pais').value.trim()||null,
+    iglesia:document.getElementById('iglesia').value.trim()||null,
+    rol_ministerial_actual:rol,
+    programa_esepa:document.getElementById('programa_esepa').value||null,
+    anio_inicio:!isNaN(ai)?ai:null,
+    anio_fin:!isNaN(af)?af:null,
+    es_egresado:egresadoEl?egresadoEl.value==='true':null,
+    ministerio_antes,
+    mayor_desafio_antes:document.getElementById('mayor_desafio_antes').value.trim()||null,
+    por_que_esepa:document.getElementById('por_que_esepa').value.trim()||null,
+    barreras_superadas:barreras_texto,
+    lo_mas_valioso:lo_mas_valioso.length?lo_mas_valioso:null,
+    momento_clave,
+    aprendizaje_transformador:document.getElementById('aprendizaje_transformador').value.trim()||null,
+    descripcion_comunidad:document.getElementById('descripcion_comunidad').value.trim()||null,
+    ministerio_hoy,
+    lo_que_no_podria_sin_esepa:document.getElementById('lo_que_no_podria_sin_esepa').value.trim()||null,
+    personas_impactadas:parseInt(personas_raw),
+    ha_capacitado_otros:ha_capacitadoEl?ha_capacitadoEl.value==='true':null,
+    detalles_multiplicacion:document.getElementById('detalles_multiplicacion').value.trim()||null,
+    cambio_en_biblia:document.getElementById('cambio_en_biblia').value.trim()||null,
+    recomendaria_esepa:recomendariaEl?recomendariaEl.value==='true':null,
+    por_que_recomendaria:document.getElementById('por_que_recomendaria').value.trim()||null,
+    mensaje_para_donante:document.getElementById('mensaje_para_donante').value.trim()||null,
+    frase_cita:document.getElementById('frase_cita').value.trim()||null,
+    algo_mas:document.getElementById('algo_mas').value.trim()||null,
+    disposicion_video:videoEl?videoEl.value:null,
+    video_medio_contacto:document.getElementById('video_medio_contacto').value||null,
+    video_horario:document.getElementById('video_horario').value.trim()||null,
+    autoriza_uso,
+    imagen_url:imagen_url||null,
+  };
+
+  const {error}=await sb.from('historias_impacto').insert(payload);
+  btn.disabled=false; btn.textContent='Enviar mi historia';
+
+  if(error){
+    showAlert('Hubo un problema al enviar tu historia. Por favor intenta de nuevo en unos minutos.');
+    console.error(error); return;
+  }
+
+  document.getElementById('page-form').classList.add('hidden');
+  document.getElementById('page-success').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

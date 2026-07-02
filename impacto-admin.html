@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historias de Impacto — Admin ESEPA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1B2F5E; --navy-dark:#15244a; --navy-mid:#2c4a7c; --navy-light:#eef2f9;
+    --orange:#C85A27; --orange-dark:#9e3e1e; --cream:#E8D5C4;
+    --surface:#fff; --bg:#f4f6fa; --border:#dce3ef; --text:#1a1f2e; --muted:#5a6478;
+    --success:#1a7a4a; --success-bg:#e8f5ee; --danger:#b91c1c; --danger-bg:#fef2f2;
+    --warning:#92400e; --warning-bg:#fffbeb; --info:#1e40af; --info-bg:#eff6ff;
+    --purple:#7e22ce; --purple-bg:#f3e8ff;
+    --radius:10px; --shadow:0 1px 4px rgba(27,47,94,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+
+  /* AUTH */
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:linear-gradient(160deg,var(--navy-dark) 0%,var(--navy) 55%,var(--navy-mid) 100%);}
+  .auth-card{background:var(--surface);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 12px 40px rgba(0,0,0,0.25);}
+  .auth-logo{text-align:center;margin-bottom:1.75rem;}
+  .auth-logo img{height:64px;width:auto;margin-bottom:1rem;}
+  .auth-logo h1{font-size:18px;font-weight:700;color:var(--navy);}
+  .auth-logo p{font-size:13px;color:var(--muted);margin-top:2px;}
+  .form-group{margin-bottom:1rem;}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:4px;}
+  input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-mid);box-shadow:0 0 0 3px rgba(44,74,124,0.12);}
+  textarea{resize:vertical;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--orange) 0%,#d4693d 100%);color:#fff;box-shadow:0 2px 6px rgba(193,82,42,.35);}
+  .btn-primary:hover{background:linear-gradient(135deg,var(--orange-dark),var(--orange));}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--bg);}
+  .btn-full{width:100%;}
+  .btn-star{background:#fffbeb;color:#92400e;border:1px solid #fde68a;padding:5px 10px;font-size:12px;}
+  .btn-star.active{background:#fef08a;border-color:#ca8a04;color:#713f12;}
+  .alert{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:var(--danger-bg);color:var(--danger);border:1px solid #fecaca;display:none;}
+
+  /* APP */
+  #page-app{display:none;}
+  nav{background:linear-gradient(135deg,#9e3e1e 0%,var(--orange) 100%);color:#fff;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(30,53,96,0.3);}
+  .nav-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;}
+  .nav-brand img{height:32px;border-radius:5px;background:#fff;padding:2px 4px;}
+  .nav-user{display:flex;align-items:center;gap:12px;font-size:13px;}
+  .btn-link{background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;}
+  .btn-link:hover{background:rgba(255,255,255,0.15);}
+
+  .container{max-width:1220px;margin:0 auto;padding:1.75rem 1.25rem 3rem;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;}
+  .header-row h1{font-size:20px;color:var(--navy);font-weight:700;}
+  .header-row p{font-size:13px;color:var(--muted);margin-top:2px;}
+  .btn-group{display:flex;gap:0.6rem;flex-wrap:wrap;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.8rem;margin-bottom:1.25rem;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem 1rem;box-shadow:var(--shadow);position:relative;}
+  .stat-card .num{font-size:24px;font-weight:700;color:var(--navy);}
+  .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+  .stat-card .accent-bar{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--radius) 0 0 var(--radius);background:var(--orange);}
+
+  .toolbar{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem 1rem;box-shadow:var(--shadow);}
+  .toolbar input,.toolbar select{width:auto;min-width:150px;}
+  .toolbar .spacer{flex:1;}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  thead{background:var(--navy);color:#fff;}
+  th{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
+  tbody tr:hover{background:var(--navy-light);cursor:pointer;}
+  .star-cell{color:#ca8a04;font-size:14px;}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .badge-nuevo{background:var(--info-bg);color:var(--info);}
+  .badge-contactado{background:var(--warning-bg);color:var(--warning);}
+  .badge-programado{background:var(--purple-bg);color:var(--purple);}
+  .badge-grabado{background:var(--success-bg);color:var(--success);}
+  .badge-publicado{background:#dcfce7;color:#15803d;}
+  .badge-descartado{background:var(--danger-bg);color:var(--danger);}
+  .video-tag{font-size:11px;padding:2px 7px;border-radius:5px;background:var(--cream);color:var(--orange-dark);font-weight:600;}
+  .num-tag{font-size:12px;font-weight:700;color:var(--navy);}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);}
+  .foto-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;border:1px solid var(--border);cursor:pointer;}
+  .foto-full{max-width:100%;border-radius:10px;border:1px solid var(--border);display:block;margin:0 auto;}
+  .foto-wrap{text-align:center;background:var(--bg);border-radius:10px;padding:1rem;margin-bottom:1rem;}
+  .btn-download{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:7px;font-size:13px;font-weight:600;background:var(--navy-light);color:var(--navy);border:1px solid var(--border);cursor:pointer;text-decoration:none;margin-top:8px;}
+
+  /* MODAL */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,28,50,0.55);z-index:200;overflow-y:auto;padding:2rem 1rem;}
+  .modal-bg.open{display:block;}
+  .modal{background:var(--surface);border-radius:14px;max-width:780px;width:100%;margin:0 auto;padding:1.75rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:2px solid var(--cream);}
+  .modal-head h2{font-size:18px;color:var(--navy);}
+  .modal-head .sub{font-size:13px;color:var(--muted);margin-top:3px;}
+  .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;flex-shrink:0;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.9rem;margin-bottom:1rem;}
+  .modal-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1rem;}
+  .qa{margin-bottom:0.9rem;}
+  .qa .q{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;}
+  .qa .a{font-size:13px;color:var(--text);white-space:pre-wrap;background:var(--bg);border-radius:7px;padding:9px 11px;}
+  .qa .a.empty{color:var(--muted);font-style:italic;}
+  .qa .a.highlight{background:#fffbeb;border-left:3px solid var(--orange);font-style:italic;color:var(--orange-dark);font-weight:500;}
+  .section-h{font-size:12px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px;margin:1.25rem 0 0.75rem;padding-bottom:4px;border-bottom:1px solid var(--cream);}
+  .modal-footer{display:flex;gap:0.7rem;justify-content:flex-end;padding-top:1.1rem;border-top:1px solid var(--border);margin-top:0.5rem;flex-wrap:wrap;}
+  .impact-num{font-size:28px;font-weight:700;color:var(--orange);}
+  .impact-lbl{font-size:12px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-wrap" id="page-auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+      <h1>Historias de Impacto</h1>
+      <p>Panel de administrador</p>
+    </div>
+    <div id="alert-auth" class="alert"></div>
+    <div class="form-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="adm-email" placeholder="tu@esepa.org" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="adm-pw" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary btn-full" id="btn-adm-login" onclick="adminLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="page-app">
+  <nav>
+    <div class="nav-brand">
+      <img src="https://raw.githubusercontent.com/ivanoreamuno-ux/esepa-becas/main/Logo%20ESEPA%20-%20HD.png" alt="ESEPA">
+      <span>Historias de Impacto — ESEPA</span>
+    </div>
+    <div class="nav-user">
+      <span id="nav-admin-nombre"></span>
+      <button class="btn-link" onclick="adminLogout()">Salir</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="header-row">
+      <div>
+        <h1>Historias de impacto recibidas</h1>
+        <p>Encuesta de antes y después — estudiantes y egresados de ESEPA.</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="exportarDestacadas()">⭐ Exportar destacadas</button>
+        <button class="btn btn-primary" onclick="exportarTodas()">⬇ Exportar todas</button>
+      </div>
+    </div>
+
+    <div class="stat-row" id="stat-row"></div>
+
+    <div class="toolbar">
+      <input type="text" id="f-buscar" placeholder="Nombre, iglesia, país..." oninput="renderTabla()">
+      <select id="f-rol" onchange="renderTabla()">
+        <option value="">Rol: todos</option>
+        <option value="pastor_principal">Pastor principal</option>
+        <option value="pastor_asociado">Pastor asociado</option>
+        <option value="lider_laico">Líder laico</option>
+        <option value="maestro_biblia">Maestro de Biblia</option>
+        <option value="misionero">Misionero</option>
+        <option value="consejero">Consejero bíblico</option>
+        <option value="docente_teologico">Docente teológico</option>
+        <option value="estudiante_activo">Estudiante activo</option>
+        <option value="otro">Otro</option>
+      </select>
+      <select id="f-video" onchange="renderTabla()">
+        <option value="">Video: todos</option>
+        <option value="si">Sí, con gusto</option>
+        <option value="tal_vez">Tal vez</option>
+        <option value="escrito_solamente">Solo escrito</option>
+        <option value="no_participa">Solo interno</option>
+      </select>
+      <select id="f-estado" onchange="renderTabla()">
+        <option value="">Estado: todos</option>
+        <option value="nuevo">Nuevo</option>
+        <option value="contactado">Contactado</option>
+        <option value="programado">Programado</option>
+        <option value="grabado">Grabado</option>
+        <option value="publicado">Publicado</option>
+        <option value="descartado">Descartado</option>
+      </select>
+      <select id="f-destacado" onchange="renderTabla()">
+        <option value="">Todas</option>
+        <option value="true">Solo destacadas ⭐</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" onclick="cargar()">↻ Actualizar</button>
+    </div>
+
+    <div id="tabla-wrap"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://dghypqykargoulzrkmrp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_uljOuVLyuF4RZbI1lp6YtA__oTmllG-';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let historias=[], currentAdmin=null;
+
+const VIDEO_L={si:'Sí, con gusto',tal_vez:'Tal vez',escrito_solamente:'Solo escrito',no_participa:'Solo interno'};
+const ESTADO_L={nuevo:'Nuevo',contactado:'Contactado',programado:'Programado',grabado:'Grabado',publicado:'Publicado',descartado:'Descartado'};
+const ROL_L={pastor_principal:'Pastor principal',pastor_asociado:'Pastor asociado',lider_laico:'Líder laico',maestro_biblia:'Maestro de Biblia',misionero:'Misionero',consejero:'Consejero',evangelista:'Evangelista',docente_teologico:'Docente teológico',estudiante_activo:'Estudiante activo',otro:'Otro'};
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    const {data:p}=await sb.from('perfiles').select('rol,nombre_completo').eq('id',session.user.id).single();
+    if(p&&p.rol==='admin'){currentAdmin=session.user;document.getElementById('nav-admin-nombre').textContent=p.nombre_completo;showApp();}
+  }
+}
+
+async function adminLogin(){
+  const email=document.getElementById('adm-email').value.trim();
+  const pw=document.getElementById('adm-pw').value;
+  const alertEl=document.getElementById('alert-auth');alertEl.style.display='none';
+  if(!email||!pw){alertEl.textContent='Completá correo y contraseña.';alertEl.style.display='block';return;}
+  const btn=document.getElementById('btn-adm-login');btn.textContent='Ingresando...';btn.disabled=true;
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  btn.textContent='Ingresar';btn.disabled=false;
+  if(error){alertEl.textContent='Credenciales incorrectas.';alertEl.style.display='block';return;}
+  const {data:p}=await sb.from('perfiles').select('rol,nombre_completo').eq('id',data.user.id).single();
+  if(!p||p.rol!=='admin'){alertEl.textContent='No tenés permisos de administrador.';alertEl.style.display='block';await sb.auth.signOut();return;}
+  currentAdmin=data.user;document.getElementById('nav-admin-nombre').textContent=p.nombre_completo;showApp();
+}
+
+async function adminLogout(){await sb.auth.signOut();window.location.reload();}
+
+function showApp(){
+  document.getElementById('page-auth').style.display='none';
+  document.getElementById('page-app').style.display='block';
+  cargar();
+}
+
+async function cargar(){
+  document.getElementById('tabla-wrap').innerHTML='<div class="empty-state">Cargando…</div>';
+  const {data,error}=await sb.from('historias_impacto').select('*').order('creado_en',{ascending:false});
+  if(error){document.getElementById('tabla-wrap').innerHTML='<div class="empty-state">Error al cargar.</div>';console.error(error);return;}
+  historias=data||[];
+  renderStats();
+  renderTabla();
+}
+
+function renderStats(){
+  const total=historias.length;
+  const personas=historias.reduce((s,h)=>(s+(h.personas_impactadas||0)),0);
+  const video=historias.filter(h=>h.disposicion_video==='si').length;
+  const destacadas=historias.filter(h=>h.destacado).length;
+  const egresados=historias.filter(h=>h.es_egresado).length;
+  const nuevas=historias.filter(h=>h.estado_seguimiento==='nuevo').length;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">${total}</div><div class="lbl">Historias recibidas</div></div>
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">${personas.toLocaleString('es-CR')}</div><div class="lbl">Personas impactadas (total estimado)</div></div>
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">${video}</div><div class="lbl">Dispuestos a video</div></div>
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">${egresados}</div><div class="lbl">Egresados graduados</div></div>
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">⭐ ${destacadas}</div><div class="lbl">Historias destacadas</div></div>
+    <div class="stat-card"><div class="accent-bar"></div><div class="num">${nuevas}</div><div class="lbl">Sin contactar aún</div></div>
+  `;
+}
+
+function renderTabla(){
+  const buscar=document.getElementById('f-buscar').value.trim().toLowerCase();
+  const fRol=document.getElementById('f-rol').value;
+  const fVideo=document.getElementById('f-video').value;
+  const fEstado=document.getElementById('f-estado').value;
+  const fDest=document.getElementById('f-destacado').value;
+
+  let f=historias.filter(h=>{
+    if(fRol&&h.rol_ministerial_actual!==fRol)return false;
+    if(fVideo&&h.disposicion_video!==fVideo)return false;
+    if(fEstado&&h.estado_seguimiento!==fEstado)return false;
+    if(fDest==='true'&&!h.destacado)return false;
+    if(buscar){
+      const blob=[h.nombre_completo,h.iglesia,h.pais,h.programa_esepa].filter(Boolean).join(' ').toLowerCase();
+      if(!blob.includes(buscar))return false;
+    }
+    return true;
+  });
+
+  if(!f.length){document.getElementById('tabla-wrap').innerHTML='<div class="empty-state">No hay historias que coincidan.</div>';return;}
+
+  const rows=f.map(h=>`
+    <tr onclick="abrirModal('${h.id}')">
+      <td class="star-cell">${h.destacado?'⭐':''}</td>
+      <td>
+        <strong>${esc(h.nombre_completo)}</strong>
+        ${h.es_egresado?'<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;margin-left:5px;font-weight:600;">EGRESADO</span>':''}
+        <br><span style="color:var(--muted);font-size:12px;">${esc(ROL_L[h.rol_ministerial_actual]||h.rol_ministerial_actual||'')}${h.pais?' · '+esc(h.pais):''}</span>
+      </td>
+      <td>${esc(h.iglesia||'—')}</td>
+      <td><span class="num-tag">${(h.personas_impactadas||0).toLocaleString('es-CR')}</span></td>
+      <td>${h.disposicion_video?'<span class="video-tag">'+esc(VIDEO_L[h.disposicion_video]||h.disposicion_video)+'</span>':'—'}</td>
+      <td>${h.imagen_url?`<img src="${esc(h.imagen_url)}" class="foto-thumb" title="Ver foto" onclick="event.stopPropagation();abrirModal('${h.id}')">`:''}</td>
+      <td><span class="badge badge-${h.estado_seguimiento}">${ESTADO_L[h.estado_seguimiento]||h.estado_seguimiento}</span></td>
+      <td>${fmtFecha(h.creado_en)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('tabla-wrap').innerHTML=`
+    <table>
+      <thead><tr><th>⭐</th><th>Persona</th><th>Iglesia</th><th>Impacto est.</th><th>Video</th><th>📷</th><th>Estado</th><th>Fecha</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function qa(label,value,highlight=false){
+  return`<div class="qa"><div class="q">${label}</div><div class="a ${value?highlight?'highlight':'':'empty'}">${value?esc(value):'Sin respuesta'}</div></div>`;
+}
+
+function abrirModal(id){
+  const h=historias.find(x=>x.id===id);
+  if(!h)return;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-head">
+      <div>
+        <h2>${esc(h.nombre_completo)} ${h.es_egresado?'<span style="font-size:12px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:5px;font-weight:600;">Egresado</span>':''} ${h.destacado?'⭐':''}</h2>
+        <div class="sub">${esc(ROL_L[h.rol_ministerial_actual]||'')} ${h.iglesia?'· '+esc(h.iglesia):''} ${h.pais?'· '+esc(h.pais):''}</div>
+      </div>
+      <button class="modal-close" onclick="cerrarModal()">&times;</button>
+    </div>
+
+    <div class="modal-grid-3">
+      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:1rem;">
+        <div class="impact-num">${(h.personas_impactadas||0).toLocaleString('es-CR')}</div>
+        <div class="impact-lbl">Personas impactadas</div>
+      </div>
+      <div class="qa"><div class="q">Programa</div><div class="a ${h.programa_esepa?'':'empty'}">${h.programa_esepa||'No indicado'}</div></div>
+      <div class="qa"><div class="q">Años en ESEPA</div><div class="a ${(h.anio_inicio||h.anio_fin)?'':'empty'}">${[h.anio_inicio,h.anio_fin].filter(Boolean).join(' – ')||'No indicados'}</div></div>
+    </div>
+
+    <div class="modal-grid">
+      <div class="qa"><div class="q">Correo</div><div class="a ${h.email?'':'empty'}">${h.email||'No proporcionado'}</div></div>
+      <div class="qa"><div class="q">Teléfono</div><div class="a ${h.telefono?'':'empty'}">${h.telefono||'No proporcionado'}</div></div>
+    </div>
+
+    ${h.imagen_url ? `
+    <div class="foto-wrap">
+      <img src="${esc(h.imagen_url)}" class="foto-full" alt="Foto del ministerio de ${esc(h.nombre_completo)}">
+      <a href="${esc(h.imagen_url)}" download class="btn-download" target="_blank">⬇ Descargar foto</a>
+    </div>` : ''}
+
+    <div class="section-h">Frase para la campaña</div>
+    ${qa('Frase citable',h.frase_cita,true)}
+    ${qa('Mensaje para iglesias/donantes',h.mensaje_para_donante)}
+
+    <div class="section-h">Antes de ESEPA</div>
+    ${qa('Ministerio antes',h.ministerio_antes)}
+    ${qa('Mayor desafío o limitación',h.mayor_desafio_antes)}
+    ${qa('Por qué buscó formación',h.por_que_esepa)}
+    ${qa('Barreras que superó',h.barreras_superadas)}
+
+    <div class="section-h">La experiencia en ESEPA</div>
+    ${qa('Momento o experiencia clave',h.momento_clave)}
+    ${qa('Aprendizaje más transformador',h.aprendizaje_transformador)}
+    ${qa('Descripción de la comunidad ESEPA',h.descripcion_comunidad)}
+
+    <div class="section-h">El impacto — después de ESEPA</div>
+    ${qa('Ministerio hoy (el "después")',h.ministerio_hoy)}
+    ${qa('Lo que no podría hacer sin ESEPA',h.lo_que_no_podria_sin_esepa)}
+    ${h.ha_capacitado_otros?qa('Multiplicación — cómo ha capacitado a otros',h.detalles_multiplicacion):''}
+    ${qa('Cambio en predicación/enseñanza bíblica',h.cambio_en_biblia)}
+    ${qa('¿Recomendaría ESEPA?',(h.recomendaria_esepa===true?'Sí':h.recomendaria_esepa===false?'No':null))}
+    ${qa('Por qué',h.por_que_recomendaria)}
+    ${h.algo_mas?qa('Algo más que quiso compartir',h.algo_mas):''}
+
+    <div class="section-h">Seguimiento y administración</div>
+    <div class="modal-grid">
+      <div class="qa"><div class="q">Disposición a video</div><div class="a ${h.disposicion_video?'':'empty'}">${h.disposicion_video?(VIDEO_L[h.disposicion_video]||h.disposicion_video):'—'}</div></div>
+      <div class="qa"><div class="q">Medio / horario</div><div class="a ${(h.video_medio_contacto||h.video_horario)?'':'empty'}">${[h.video_medio_contacto,h.video_horario].filter(Boolean).join(' · ')||'—'}</div></div>
+    </div>
+
+    <div class="modal-grid">
+      <div class="form-group">
+        <label>Estado de seguimiento</label>
+        <select id="modal-estado">
+          ${Object.entries(ESTADO_L).map(([k,v])=>`<option value="${k}"${h.estado_seguimiento===k?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Destacada para campaña</label>
+        <select id="modal-destacado">
+          <option value="false"${!h.destacado?' selected':''}>No destacada</option>
+          <option value="true"${h.destacado?' selected':''}>⭐ Destacar esta historia</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notas internas</label>
+      <textarea id="modal-notas" rows="3" style="font-size:13px;">${h.notas_admin?esc(h.notas_admin):''}</textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+      <button class="btn btn-primary" onclick="guardarSeguimiento('${h.id}')">Guardar cambios</button>
+    </div>
+  `;
+  document.getElementById('modal-bg').classList.add('open');
+  document.getElementById('modal-bg').scrollTop=0;
+}
+
+function cerrarModal(){document.getElementById('modal-bg').classList.remove('open');}
+
+async function guardarSeguimiento(id){
+  const estado_seguimiento=document.getElementById('modal-estado').value;
+  const destacado=document.getElementById('modal-destacado').value==='true';
+  const notas_admin=document.getElementById('modal-notas').value.trim()||null;
+  const {error}=await sb.from('historias_impacto').update({estado_seguimiento,destacado,notas_admin}).eq('id',id);
+  if(error){alert('No se pudo guardar. Intenta de nuevo.');console.error(error);return;}
+  cerrarModal();
+  await cargar();
+}
+
+function buildExportRows(lista){
+  return lista.map(h=>({
+    'Nombre':h.nombre_completo,
+    'Es egresado':h.es_egresado?'Sí':'No',
+    'Rol ministerial':ROL_L[h.rol_ministerial_actual]||h.rol_ministerial_actual||'',
+    'Programa':h.programa_esepa||'',
+    'Año inicio':h.anio_inicio||'',
+    'Año fin':h.anio_fin||'',
+    'País':h.pais||'',
+    'Iglesia':h.iglesia||'',
+    'Correo':h.email||'',
+    'Teléfono':h.telefono||'',
+    'Ministerio antes':h.ministerio_antes||'',
+    'Mayor desafío antes':h.mayor_desafio_antes||'',
+    'Por qué buscó formación':h.por_que_esepa||'',
+    'Barreras':h.barreras_superadas||'',
+    'Momento clave en ESEPA':h.momento_clave||'',
+    'Aprendizaje transformador':h.aprendizaje_transformador||'',
+    'Comunidad ESEPA':h.descripcion_comunidad||'',
+    'Ministerio hoy':h.ministerio_hoy||'',
+    'Lo que no podría sin ESEPA':h.lo_que_no_podria_sin_esepa||'',
+    'Personas impactadas':h.personas_impactadas||0,
+    'Ha capacitado a otros':h.ha_capacitado_otros?'Sí':'No',
+    'Detalles multiplicación':h.detalles_multiplicacion||'',
+    'Cambio en predicación':h.cambio_en_biblia||'',
+    'Recomendaría ESEPA':h.recomendaria_esepa===true?'Sí':h.recomendaria_esepa===false?'No':'',
+    'Por qué recomendaría':h.por_que_recomendaria||'',
+    'Mensaje para donante':h.mensaje_para_donante||'',
+    'Frase citable':h.frase_cita||'',
+    'Algo más':h.algo_mas||'',
+    'Disposición a video':VIDEO_L[h.disposicion_video]||h.disposicion_video||'',
+    'Medio de contacto':h.video_medio_contacto||'',
+    'Horario sugerido':h.video_horario||'',
+    'Autoriza uso':h.autoriza_uso?'Sí':'No',
+    'Destacada':h.destacado?'Sí':'No',
+    'Estado':ESTADO_L[h.estado_seguimiento]||h.estado_seguimiento,
+    'Notas internas':h.notas_admin||'',
+    'Fecha de envío':fmtFecha(h.creado_en),
+  }));
+}
+
+function exportarTodas(){
+  if(!historias.length){alert('No hay historias para exportar.');return;}
+  generarExcel(buildExportRows(historias),'Historias_Impacto_ESEPA_Todas');
+}
+
+function exportarDestacadas(){
+  const dest=historias.filter(h=>h.destacado);
+  if(!dest.length){alert('No hay historias destacadas todavía. Márcalas con ⭐ desde el detalle de cada historia.');return;}
+  generarExcel(buildExportRows(dest),'Historias_Impacto_ESEPA_Destacadas');
+}
+
+function generarExcel(filas,nombre){
+  const ws=XLSX.utils.json_to_sheet(filas);
+  ws['!cols']=[{wch:24},{wch:10},{wch:20},{wch:16},{wch:10},{wch:10},{wch:14},{wch:22},{wch:26},{wch:14},{wch:40},{wch:40},{wch:40},{wch:30},{wch:40},{wch:40},{wch:40},{wch:40},{wch:40},{wch:12},{wch:12},{wch:40},{wch:40},{wch:10},{wch:40},{wch:40},{wch:30},{wch:40},{wch:18},{wch:16},{wch:22},{wch:10},{wch:10},{wch:18},{wch:30},{wch:14}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Historias');
+  XLSX.writeFile(wb,`${nombre}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function fmtFecha(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'});}
+function esc(s){if(!s)return'';return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+init();
+</script>
+</body>
+</html>
