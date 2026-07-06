@@ -381,7 +381,7 @@ async function cargarDashboard() {
   document.getElementById('ds-aprobado').textContent = '₡' + sols.filter(s=>['aprobada','aplicada'].includes(s.estado)).reduce((sum,s)=>sum+(s.monto_asignado||0),0).toLocaleString('es-CR');
   document.getElementById('ds-beneficiarios').textContent = new Set(sols.filter(s=>['aprobada','aplicada'].includes(s.estado)).map(s=>s.estudiante_id)).size;
   document.getElementById('ds-recientes').innerHTML = sols.length ? '<table><thead><tr><th>Estudiante</th><th>Período</th><th>Costo</th><th>Estado</th></tr></thead><tbody>' +
-    sols.slice(0,5).map(s => { const c = calcularCosto(s.programa, s.cantidad_cursos||1); return '<tr><td>' + (s.perfiles?.nombre_completo||'—') + '</td><td>' + (s.periodo||'—') + '</td><td style="font-weight:500">₡' + c.total.toLocaleString('es-CR') + '</td><td>' + badgeHtml(s.estado) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p style="color:var(--muted);font-size:13px">Sin solicitudes.</p>';
+    sols.slice(0,5).map(s => { const c = calcularCosto(s.programa, s.cantidad_cursos||1); return '<tr><td>' + escapeHtml(s.perfiles?.nombre_completo||'—') + '</td><td>' + escapeHtml(s.periodo||'—') + '</td><td style="font-weight:500">₡' + c.total.toLocaleString('es-CR') + '</td><td>' + badgeHtml(s.estado) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p style="color:var(--muted);font-size:13px">Sin solicitudes.</p>';
   const { data: fondos } = await sb.from('fondos_beca').select('*').eq('activo',true);
   if (fondos && fondos.length) {
     document.getElementById('ds-fondos').innerHTML = fondos.map(f => {
@@ -406,7 +406,7 @@ function filtrarSolicitudes() {
   if (!filtradas.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados</td></tr>'; return; }
   tbody.innerHTML = filtradas.map(s => {
     const c = calcularCosto(s.programa, s.cantidad_cursos||1);
-    return '<tr><td><strong>' + (s.perfiles?.nombre_completo||'—') + '</strong><br><span style="color:var(--muted);font-size:11px">' + (s.perfiles?.pais||'') + '</span></td><td>' + s.periodo + '</td><td style="font-size:12px">' + s.programa + '</td><td style="text-align:center">' + (s.cantidad_cursos||1) + '</td><td style="font-weight:600;color:var(--brand)">₡' + c.total.toLocaleString('es-CR') + '</td><td>' + badgeHtml(s.estado) + '</td><td>' + (s.monto_asignado ? '<span style="color:var(--success);font-weight:600">₡' + s.monto_asignado.toLocaleString('es-CR') + '</span>' : '<span style="color:var(--muted)">—</span>') + '</td><td><button class="btn btn-secondary btn-sm" onclick="abrirSolicitud(\'' + s.id + '\')">Revisar</button></td></tr>';
+    return '<tr><td><strong>' + escapeHtml(s.perfiles?.nombre_completo||'—') + '</strong><br><span style="color:var(--muted);font-size:11px">' + escapeHtml(s.perfiles?.pais||'') + '</span></td><td>' + escapeHtml(s.periodo) + '</td><td style="font-size:12px">' + escapeHtml(s.programa) + '</td><td style="text-align:center">' + (s.cantidad_cursos||1) + '</td><td style="font-weight:600;color:var(--brand)">₡' + c.total.toLocaleString('es-CR') + '</td><td>' + badgeHtml(s.estado) + '</td><td>' + (s.monto_asignado ? '<span style="color:var(--success);font-weight:600">₡' + s.monto_asignado.toLocaleString('es-CR') + '</span>' : '<span style="color:var(--muted)">—</span>') + '</td><td><button class="btn btn-secondary btn-sm" onclick="abrirSolicitud(\'' + s.id + '\')">Revisar</button></td></tr>';
   }).join('');
 }
 
@@ -423,7 +423,7 @@ async function abrirSolicitud(id) {
   const { data: perfil } = await sb.from('perfiles').select('*').eq('id',sol.estudiante_id).single();
   document.getElementById('modal-sol-detalle').innerHTML =
     '<div style="background:var(--brand-light);border-radius:8px;padding:1rem;margin-bottom:1rem">' +
-    '<div style="font-size:15px;font-weight:600;color:var(--brand);margin-bottom:0.75rem">' + (perfil?.nombre_completo||'—') + '</div>' +
+    '<div style="font-size:15px;font-weight:600;color:var(--brand);margin-bottom:0.75rem">' + escapeHtml(perfil?.nombre_completo||'—') + '</div>' +
     row('Identificación', perfil?.numero_identificacion) + row('Teléfono', perfil?.telefono) +
     row('País / Ciudad', [perfil?.pais,perfil?.ciudad].filter(Boolean).join(', ')) +
     row('Iglesia', perfil?.iglesia) + row('Pastor / Líder', perfil?.nombre_pastor) +
@@ -432,12 +432,13 @@ async function abrirSolicitud(id) {
     row('Programa', sol.programa) + row('Cursos a matricular', sol.cantidad_cursos) +
     row('Tipo de solicitud', sol.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación') + '</div>' +
     '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.5rem">Motivo de la solicitud</div>' +
-    '<p style="font-size:13px;line-height:1.7;background:var(--bg);padding:1rem;border-radius:8px;border:1px solid var(--border)">' + sol.motivo + '</p>';
+    '<p style="font-size:13px;line-height:1.7;background:var(--bg);padding:1rem;border-radius:8px;border:1px solid var(--border)">' + escapeHtml(sol.motivo) + '</p>';
   document.getElementById('modal-costo-box').innerHTML = costoBoxHtml(sol.programa, sol.cantidad_cursos||1, sol.monto_asignado);
   document.getElementById('modal-solicitud').classList.add('open');
 }
 
-function row(label, val) { return '<div class="detail-row"><span class="detail-label">' + label + '</span><span class="detail-value">' + (val||'—') + '</span></div>'; }
+function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function row(label, val) { return '<div class="detail-row"><span class="detail-label">' + label + '</span><span class="detail-value">' + (val?escapeHtml(val):'—') + '</span></div>'; }
 
 async function guardarCambiosSolicitud() {
   if (!solicitudActual) return;
@@ -601,11 +602,11 @@ async function cargarReportes() {
   const tbody=document.getElementById('rep-tabla');
   if(!filtradas.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados con los filtros seleccionados</td></tr>';return;}
   tbody.innerHTML=filtradas.map(s=>`<tr>
-    <td><strong>${s.perfiles?.nombre_completo||'—'}</strong></td>
+    <td><strong>${escapeHtml(s.perfiles?.nombre_completo||'—')}</strong></td>
     <td style="font-size:12px">${s.perfiles?.sexo||'—'}</td>
     <td style="font-size:12px">${s.perfiles?.pais||'—'}</td>
     <td style="font-size:12px">${(s.programa||'').replace('Bachillerato en ','Bac. ').replace('Maestría en ','Mae. ').replace('Diplomado en ','Dip. ')}</td>
-    <td style="font-size:12px">${s.perfiles?.ministerio||'—'}</td>
+    <td style="font-size:12px">${escapeHtml(s.perfiles?.ministerio||'—')}</td>
     <td style="font-size:12px">${s.perfiles?.dedicacion_ministerio||'—'}</td>
     <td style="font-size:12px">${s.fondos_beca?.nombre||'—'}</td>
     <td style="font-weight:600;color:var(--success)">${s.monto_asignado?'₡'+s.monto_asignado.toLocaleString('es-CR'):'—'}</td>
@@ -626,7 +627,7 @@ function filtrarEstudiantes() {
   const filtrados = todosEstudiantes.filter(e=>e.nombre_completo?.toLowerCase().includes(buscar));
   const tbody = document.getElementById('tabla-estudiantes');
   if(!filtrados.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados</td></tr>';return;}
-  tbody.innerHTML = filtrados.map(e=>'<tr><td><strong>'+e.nombre_completo+'</strong></td><td style="font-size:12px">'+(e.programa||'—')+'</td><td style="font-size:12px">'+(e.iglesia||'—')+'</td><td style="font-size:12px">'+(e.pais||'—')+'</td><td style="text-align:center">'+(perfilCompleto(e)?'<span style="color:var(--success);font-size:13px">✓ Completo</span>':'<span style="color:var(--warning);font-size:13px">⚠ Incompleto</span>')+'</td><td style="text-align:center">—</td></tr>').join('');
+  tbody.innerHTML = filtrados.map(e=>'<tr><td><strong>'+escapeHtml(e.nombre_completo)+'</strong></td><td style="font-size:12px">'+escapeHtml(e.programa||'—')+'</td><td style="font-size:12px">'+escapeHtml(e.iglesia||'—')+'</td><td style="font-size:12px">'+escapeHtml(e.pais||'—')+'</td><td style="text-align:center">'+(perfilCompleto(e)?'<span style="color:var(--success);font-size:13px">✓ Completo</span>':'<span style="color:var(--warning);font-size:13px">⚠ Incompleto</span>')+'</td><td style="text-align:center">—</td></tr>').join('');
 }
 
 function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
@@ -655,7 +656,7 @@ function buscarEstudianteHistorico(){
     if(!data||!data.length){resultados.innerHTML='<div style="padding:10px;font-size:13px;color:var(--muted)">Sin resultados.</div>';resultados.style.display='block';return;}
     resultados.innerHTML=data.map(e=>'<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:10px" onmouseover="this.style.background=\'var(--brand-light)\'" onmouseout="this.style.background=\'\'" onclick=\'seleccionarEstudianteHistorico('+JSON.stringify(JSON.stringify(e))+')\'>'+
       '<div style="width:32px;height:32px;border-radius:50%;background:var(--brand-light);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(e.foto_url?'<img src="'+e.foto_url+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:14px">👤</span>')+'</div>'+
-      '<div><strong>'+e.nombre_completo+'</strong><br><span style="color:var(--muted);font-size:11px">'+e.total_solicitudes+' solicitud'+(e.total_solicitudes!==1?'es':'')+' · ₡'+(e.monto_total_historico||0).toLocaleString('es-CR')+' histórico</span></div>'
+      '<div><strong>'+escapeHtml(e.nombre_completo)+'</strong><br><span style="color:var(--muted);font-size:11px">'+e.total_solicitudes+' solicitud'+(e.total_solicitudes!==1?'es':'')+' · ₡'+(e.monto_total_historico||0).toLocaleString('es-CR')+' histórico</span></div>'
     +'</div>').join('');
     resultados.style.display='block';
   },300);
@@ -675,8 +676,8 @@ async function seleccionarEstudianteHistorico(jsonStr){
         ${e.foto_url?'<img src="'+e.foto_url+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:26px;color:var(--brand-mid)">👤</span>'}
       </div>
       <div>
-        <div style="font-size:18px;font-weight:700;color:var(--brand)">${e.nombre_completo}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:2px">${e.iglesia||'Sin iglesia registrada'} · ${e.pais||'—'}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--brand)">${escapeHtml(e.nombre_completo)}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">${escapeHtml(e.iglesia||'Sin iglesia registrada')} · ${escapeHtml(e.pais||'—')}</div>
         <div style="font-size:12px;color:var(--muted)">Ingresó: ${e.cuatrimestre_ingreso||'No registrado'} · Primer período de beca: ${e.primer_periodo||'—'}</div>
       </div>
     </div>

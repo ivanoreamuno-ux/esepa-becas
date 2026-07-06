@@ -119,6 +119,7 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TARIFAS = { matricula:{bachillerato:42500,maestria:46500}, curso:{bachillerato:63000,maestria:100800} };
+function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function calcularCosto(programa, cursos) {
   const tipo = (programa||'').toLowerCase().includes('maestría') ? 'maestria' : 'bachillerato';
   const matricula = TARIFAS.matricula[tipo]; const precioCurso = TARIFAS.curso[tipo];
@@ -175,7 +176,7 @@ async function cargarReporte() {
   document.getElementById('r-tabla-benef').innerHTML=benef.length?benef.map(s=>{
     const c=calcularCosto(s.programa,s.cantidad_cursos||1);
     const pct=s.monto_asignado?Math.round((s.monto_asignado/c.total)*100):0;
-    return '<tr><td><strong>'+(s.perfiles?.nombre_completo||'—')+'</strong></td><td style="font-size:12px">'+s.programa+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-size:12px">'+(s.fondos_beca?.nombre||'—')+'</td><td style="font-weight:500">₡'+c.total.toLocaleString('es-CR')+'</td><td style="font-weight:700;color:var(--success)">₡'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-weight:600;color:var(--brand)">'+pct+'%</td><td>'+(s.estado==='aplicada'?'<span class="badge badge-success">Aplicada</span>':'<span class="badge badge-info">Aprobada</span>')+'</td></tr>';
+    return '<tr><td><strong>'+escapeHtml(s.perfiles?.nombre_completo||'—')+'</strong></td><td style="font-size:12px">'+escapeHtml(s.programa)+'</td><td style="font-size:12px">'+escapeHtml(s.periodo)+'</td><td style="font-size:12px">'+escapeHtml(s.fondos_beca?.nombre||'—')+'</td><td style="font-weight:500">₡'+c.total.toLocaleString('es-CR')+'</td><td style="font-weight:700;color:var(--success)">₡'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-weight:600;color:var(--brand)">'+pct+'%</td><td>'+(s.estado==='aplicada'?'<span class="badge badge-success">Aplicada</span>':'<span class="badge badge-info">Aprobada</span>')+'</td></tr>';
   }).join(''):'<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">Sin beneficiarios en este período</td></tr>';
 }
 

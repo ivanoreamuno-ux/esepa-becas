@@ -407,7 +407,7 @@ function renderCola(){
   const items=todasSolicitudes.filter(s=>s.estado==='aprobada');
   const c=document.getElementById('lista-cola');
   if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\u2705</div><h3>Sin becas pendientes de procesar en Q10</h3></div>';return;}
-  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Fondo</th><th>Monto</th><th>Aprobada</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-size:12px">'+(s.fondos_beca?.nombre||'-')+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.revisado_en||s.creado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirQ10(\''+s.id+'\')">Procesar Q10</button></td></tr>').join('')+'</tbody></table></div>';
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Fondo</th><th>Monto</th><th>Aprobada</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+escapeHtml(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+escapeHtml(s.periodo)+'</td><td style="font-size:12px">'+escapeHtml(s.fondos_beca?.nombre||'-')+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.revisado_en||s.creado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirQ10(\''+s.id+'\')">Procesar Q10</button></td></tr>').join('')+'</tbody></table></div>';
 }
 
 function renderNotificaciones(){
@@ -415,7 +415,7 @@ function renderNotificaciones(){
   poblarPl('sel-plantilla-masiva');
   const c=document.getElementById('lista-notificaciones');
   if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83d\udcad</div><h3>Sin becas pendientes de notificacion</h3></div>';return;}
-  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Ingresado Q10</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.procesado_q10_en)+'</td><td style="display:flex;gap:6px;padding:8px 10px"><button class="btn btn-secondary btn-sm" onclick="abrirMod(\''+s.id+'\')">Modificar monto</button><button class="btn btn-navy btn-sm" onclick="abrirNotifInd(\''+s.id+'\')">\ud83d\udce7 Notificar</button></td></tr>').join('')+'</tbody></table></div>';
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Ingresado Q10</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+escapeHtml(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+escapeHtml(s.periodo)+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.procesado_q10_en)+'</td><td style="display:flex;gap:6px;padding:8px 10px"><button class="btn btn-secondary btn-sm" onclick="abrirMod(\''+s.id+'\')">Modificar monto</button><button class="btn btn-navy btn-sm" onclick="abrirNotifInd(\''+s.id+'\')">\ud83d\udce7 Notificar</button></td></tr>').join('')+'</tbody></table></div>';
   cargarCorreosFallidos();
 }
 
@@ -427,9 +427,9 @@ async function cargarCorreosFallidos(){
   card.style.display='block';
   c.innerHTML=data.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
     <div>
-      <strong style="font-size:13px">${f.destinatario_nombre}</strong>
+      <strong style="font-size:13px">${escapeHtml(f.destinatario_nombre)}</strong>
       <span style="font-size:11px;color:var(--muted);margin-left:6px">${f.solicitudes?.periodo||''}</span>
-      <div style="font-size:11px;color:var(--danger);margin-top:2px">${f.error_detalle||'Error desconocido'} · ${f.intentos} intento${f.intentos!==1?'s':''}</div>
+      <div style="font-size:11px;color:var(--danger);margin-top:2px">${escapeHtml(f.error_detalle||'Error desconocido')} · ${f.intentos} intento${f.intentos!==1?'s':''}</div>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="reintentarCorreo('${f.id}','${f.solicitud_id}')">↻ Reintentar</button>
   </div>`).join('');
@@ -472,14 +472,14 @@ function renderMatricula(){
   const items=todasSolicitudes.filter(s=>s.estado==='notificado');
   const c=document.getElementById('lista-matricula');
   if(!items.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83c\udf93</div><h3>Sin estudiantes pendientes de confirmacion</h3></div>';return;}
-  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Notificado</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.notificado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirMat(\''+s.id+'\')">Confirmar matricula</button></td></tr>').join('')+'</tbody></table></div>';
+  c.innerHTML='<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Estudiante</th><th>Programa</th><th>Periodo</th><th>Monto</th><th>Notificado</th><th></th></tr></thead><tbody>'+items.map(s=>'<tr><td><strong>'+escapeHtml(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+escapeHtml(s.periodo)+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td style="font-size:11px;color:var(--muted)">'+fmtD(s.notificado_en)+'</td><td><button class="btn btn-primary btn-sm" onclick="abrirMat(\''+s.id+'\')">Confirmar matricula</button></td></tr>').join('')+'</tbody></table></div>';
 }
 
 function abrirQ10(id){
   const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
   document.getElementById('mq10-titulo').textContent='Procesar en Q10 - '+(s.perfiles?.nombre_completo||'');
   document.getElementById('mq10-pipeline').innerHTML=pipeHtml(s.estado);
-  document.getElementById('mq10-info').innerHTML='<div style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1rem">'+dr('Estudiante',s.perfiles?.nombre_completo)+dr('Programa',s.programa)+dr('Periodo',s.periodo)+dr('Fondo',s.fondos_beca?.nombre||'-')+dr('Monto','<strong style=\"color:var(--success)\">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</strong>')+dr('Notas del Comite',s.notas_comite||'-')+'</div>';
+  document.getElementById('mq10-info').innerHTML='<div style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1rem">'+dr('Estudiante',s.perfiles?.nombre_completo)+dr('Programa',s.programa)+dr('Periodo',s.periodo)+dr('Fondo',s.fondos_beca?.nombre||'-')+dr('Monto','<strong style=\"color:var(--success)\">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</strong>',true)+dr('Notas del Comite',s.notas_comite||'-')+'</div>';
   document.getElementById('alert-mq10').innerHTML='';
   document.getElementById('modal-q10').classList.add('open');
 }
@@ -639,7 +639,7 @@ async function enviarMasivo(){
 function abrirMat(id){
   const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;solicitudActual=s;
   document.getElementById('mmat-titulo').textContent='Matricula - '+(s.perfiles?.nombre_completo||'');
-  document.getElementById('mmat-info').innerHTML=dr('Estudiante',s.perfiles?.nombre_completo)+dr('Periodo',s.periodo)+dr('Monto','\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR'))+dr('Notificado',fmtD(s.notificado_en));
+  document.getElementById('mmat-info').innerHTML=dr('Estudiante',s.perfiles?.nombre_completo)+dr('Periodo',s.periodo)+dr('Monto','\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR'),true)+dr('Notificado',fmtD(s.notificado_en));
   document.getElementById('mat-resultado').value='';document.getElementById('mat-notas').value='';
   document.getElementById('alert-mmat').innerHTML='';
   document.getElementById('modal-mat').classList.add('open');
@@ -700,7 +700,7 @@ function renderReporte(){
   const filtradas=todasSolicitudes.filter(s=>(!fe||s.estado===fe)&&(!fp||s.periodo===fp)&&(!fb||s.perfiles?.nombre_completo?.toLowerCase().includes(fb)));
   const tbody=document.getElementById('rep-tabla');
   if(!filtradas.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados</td></tr>';return;}
-  tbody.innerHTML=filtradas.map(s=>'<tr><td><strong>'+(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+s.periodo+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td>'+bdg(s.estado)+'</td><td style="font-size:11px;color:var(--muted)">'+(s.procesado_q10_en?fmtD(s.procesado_q10_en):'-')+'</td><td style="font-size:11px;color:var(--muted)">'+(s.notificado_en?fmtD(s.notificado_en):'-')+'</td><td style="font-size:12px">'+(s.confirmacion_matricula?'<span style=\"color:var('+(s.confirmacion_matricula==='matriculado'?'--success':'--danger')+')\">\u25cf</span> '+(s.confirmacion_matricula==='matriculado'?'Si':'No'):'-')+'</td><td>'+(['aprobada','procesada_q10','notificado'].includes(s.estado)?'<button class="btn btn-secondary btn-sm" onclick="abrirDesdeReporte(\''+s.id+'\')">Ver</button>':'')+'</td></tr>').join('');
+  tbody.innerHTML=filtradas.map(s=>'<tr><td><strong>'+escapeHtml(s.perfiles?.nombre_completo||'-')+'</strong></td><td style="font-size:12px">'+abrevProg(s.programa)+'</td><td style="font-size:12px">'+escapeHtml(s.periodo)+'</td><td style="font-weight:600;color:var(--success)">\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')+'</td><td>'+bdg(s.estado)+'</td><td style="font-size:11px;color:var(--muted)">'+(s.procesado_q10_en?fmtD(s.procesado_q10_en):'-')+'</td><td style="font-size:11px;color:var(--muted)">'+(s.notificado_en?fmtD(s.notificado_en):'-')+'</td><td style="font-size:12px">'+(s.confirmacion_matricula?'<span style=\"color:var('+(s.confirmacion_matricula==='matriculado'?'--success':'--danger')+')\">\u25cf</span> '+(s.confirmacion_matricula==='matriculado'?'Si':'No'):'-')+'</td><td>'+(['aprobada','procesada_q10','notificado'].includes(s.estado)?'<button class="btn btn-secondary btn-sm" onclick="abrirDesdeReporte(\''+s.id+'\')">Ver</button>':'')+'</td></tr>').join('');
 }
 
 function abrirDesdeReporte(id){const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;if(s.estado==='aprobada')abrirQ10(id);else if(s.estado==='procesada_q10')abrirNotifInd(id);else if(s.estado==='notificado')abrirMat(id);}
@@ -708,13 +708,14 @@ function abrirDesdeReporte(id){const s=todasSolicitudes.find(x=>x.id===id);if(!s
 function poblarPl(selId){const sel=document.getElementById(selId);if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="">Seleccionar plantilla...</option>'+plantillas.map(p=>'<option value="'+p.id+'">'+p.nombre+'</option>').join('');if(cur)sel.value=cur;}
 function procVar(t,s){return t.replace(/{nombre}/g,s.perfiles?.nombre_completo||'Estudiante').replace(/{periodo}/g,s.periodo||'').replace(/{monto}/g,'\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')).replace(/{fondo}/g,s.fondos_beca?.nombre||'Fondo ESEPA').replace(/{programa}/g,s.programa||'');}
 function pipeHtml(e){const p=['aprobada','procesada_q10','notificado','matriculado'];const d=p.indexOf(e);return '<div class="pipeline">'+p.map((x,i)=>(i>0?'<span class="step-arrow">›</span>':'')+'<span class="step '+(i<d?'done':i===d?'active':'pending')+'">'+({aprobada:'Aprobada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado'})[x]+'</span>').join('')+'</div>';}
-function dr(l,v){return '<div class="detail-row"><span class="dl">'+l+'</span><span class="dv">'+(v||'-')+'</span></div>';}
+function dr(l,v,h){return '<div class="detail-row"><span class="dl">'+l+'</span><span class="dv">'+(v?(h?v:escapeHtml(v)):'-')+'</span></div>';}
 function bdg(e){return '<span class="badge badge-'+e+'">'+(ESTADOS[e]||e)+'</span>';}
-function abrevProg(p){return(p||'').replace('Bachillerato en ','Bac. ').replace('Maestria en ','Mae. ').replace('Diplomado en ','Dip. ');}
+function abrevProg(p){return escapeHtml((p||'').replace('Bachillerato en ','Bac. ').replace('Maestria en ','Mae. ').replace('Diplomado en ','Dip. '));}
 function fmtD(d){return d?new Date(d).toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';}
 function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['cola','notificaciones','matricula','plantillas','reporte','excepcion'][i]===t));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');if(t==='notificaciones')poblarPl('sel-plantilla-masiva');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function showAlert(msg,type='success'){const el=document.getElementById('alert-main');el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',6000);}
+function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
 // ─── SOLICITUD POR EXCEPCIÓN ─────────────────────────────────────────────────
 let estudianteSeleccionadoExc=null;
@@ -728,7 +729,7 @@ function buscarEstudiantesExcepcion(){
   busquedaExcTimeout=setTimeout(async()=>{
     const{data}=await sb.from('perfiles').select('id,nombre_completo,iglesia,programa').eq('rol','estudiante').ilike('nombre_completo','%'+q+'%').limit(8);
     if(!data||!data.length){resultados.innerHTML='<div style="padding:10px;font-size:13px;color:var(--muted)">Sin resultados.</div>';resultados.style.display='block';return;}
-    resultados.innerHTML=data.map(p=>'<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmouseover="this.style.background=\'var(--navy-light)\'" onmouseout="this.style.background=\'\'" onclick=\'seleccionarEstudianteExc('+JSON.stringify(JSON.stringify(p))+')\'><strong>'+p.nombre_completo+'</strong><br><span style="color:var(--muted);font-size:11px">'+(p.iglesia||'Sin iglesia registrada')+' · '+(p.programa||'Sin programa')+'</span></div>').join('');
+    resultados.innerHTML=data.map(p=>'<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmouseover="this.style.background=\'var(--navy-light)\'" onmouseout="this.style.background=\'\'" onclick=\'seleccionarEstudianteExc('+JSON.stringify(JSON.stringify(p))+')\'><strong>'+escapeHtml(p.nombre_completo)+'</strong><br><span style="color:var(--muted);font-size:11px">'+escapeHtml(p.iglesia||'Sin iglesia registrada')+' · '+escapeHtml(p.programa||'Sin programa')+'</span></div>').join('');
     resultados.style.display='block';
   },300);
 }

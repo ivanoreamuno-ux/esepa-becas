@@ -720,14 +720,14 @@ function tarjetaEstadoHtml(s){
         <span class="card-title">🎉 ¡Tu beca fue aprobada!</span>${badgeHtml(s.estado)}
       </div>
       <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Período</span><strong>${s.periodo}</strong></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Programa</span><strong>${s.programa}</strong></div>
-        ${c?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Fondo</span><strong>${c}</strong></div>`:''}
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Período</span><strong>${escapeHtml(s.periodo)}</strong></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Programa</span><strong>${escapeHtml(s.programa)}</strong></div>
+        ${c?`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="text-muted">Fondo</span><strong>${escapeHtml(c)}</strong></div>`:''}
         <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border)"><span class="text-muted">Monto asignado</span><strong style="color:var(--success);font-size:18px">₡${(s.monto_asignado||0).toLocaleString('es-CR')}</strong></div>
       </div>
       ${s.comentario_comite_estudiante?`<div style="background:var(--brand-light);border-radius:8px;padding:1rem">
         <div style="font-size:12px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px">💬 Mensaje del Comité de Becas</div>
-        <p style="font-size:13px;color:var(--text);font-style:italic">"${s.comentario_comite_estudiante}"</p>
+        <p style="font-size:13px;color:var(--text);font-style:italic">"${escapeHtml(s.comentario_comite_estudiante)}"</p>
       </div>`:''}
       ${s.estado==='notificado'||s.estado==='procesada_q10'?'<p class="text-muted" style="margin-top:0.75rem;font-size:12px">Tu beca está siendo procesada para aplicarse en tu matrícula.</p>':''}
       ${s.estado==='matriculado'?'<p style="margin-top:0.75rem;font-size:12px;color:var(--success)">✓ Matrícula confirmada. ¡Que tengas un excelente cuatrimestre!</p>':''}
@@ -737,12 +737,12 @@ function tarjetaEstadoHtml(s){
   if(esRechazada){
     return `<div class="card" style="border-left:4px solid var(--muted)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-        <span class="card-title">Solicitud no aprobada — ${s.periodo}</span>${badgeHtml(s.estado)}
+        <span class="card-title">Solicitud no aprobada — ${escapeHtml(s.periodo)}</span>${badgeHtml(s.estado)}
       </div>
       <p class="text-muted">Tu solicitud para este período no fue aprobada en esta ocasión.</p>
       ${s.comentario_comite_estudiante?`<div style="background:var(--bg);border-radius:8px;padding:1rem;margin-top:0.75rem">
         <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px">Comentario del Comité</div>
-        <p style="font-size:13px;color:var(--text)">"${s.comentario_comite_estudiante}"</p>
+        <p style="font-size:13px;color:var(--text)">"${escapeHtml(s.comentario_comite_estudiante)}"</p>
       </div>`:''}
     </div>`;
   }
@@ -753,7 +753,7 @@ function tarjetaEstadoHtml(s){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
       <span class="card-title">Tu solicitud está ${s.estado==='pendiente'?'pendiente de revisión':'en revisión'}</span>${badgeHtml(s.estado)}
     </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">${s.programa} · ${s.periodo} · ${s.cantidad_cursos} curso${s.cantidad_cursos>1?'s':''}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">${escapeHtml(s.programa)} · ${escapeHtml(s.periodo)} · ${s.cantidad_cursos} curso${s.cantidad_cursos>1?'s':''}</div>
     <p class="text-muted" style="margin-bottom:1rem">${s.estado==='pendiente'?'El Comité de Becas revisará tu solicitud pronto.':'El Comité de Becas está evaluando tu solicitud actualmente.'}</p>
     ${puedeEditar?`<button class="btn btn-secondary" onclick="cargarSolicitudParaEditar()">✎ Editar mi solicitud</button>`:'<p style="font-size:12px;color:var(--muted)">El plazo de edición para este período ya cerró.</p>'}
   </div>`;
@@ -817,10 +817,10 @@ async function generarCartaPersonalizada(){
       <div style="font-size:16px;font-weight:700;color:var(--brand);margin-bottom:1rem;text-align:center">Tu carta está lista</div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;text-align:center">Generada automáticamente con tus datos. Ya podés descargarla, imprimirla y llevarla a tu pastor para que la firme.</p>
       <div style="background:var(--bg);border-radius:8px;padding:1rem;font-size:13px;margin-bottom:1.25rem">
-        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Estudiante:</strong> ${nombre}</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Pastor / Líder:</strong> ${pastor}</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Iglesia:</strong> ${iglesia}</div>
-        <div><strong style="color:var(--brand)">Programa:</strong> ${programa}</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Estudiante:</strong> ${escapeHtml(nombre)}</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Pastor / Líder:</strong> ${escapeHtml(pastor)}</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--brand)">Iglesia:</strong> ${escapeHtml(iglesia)}</div>
+        <div><strong style="color:var(--brand)">Programa:</strong> ${escapeHtml(programa)}</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button onclick="this.closest('div[style]').remove()" style="padding:8px 16px;border:1px solid #dce3ef;border-radius:8px;background:white;cursor:pointer;font-size:13px">Cerrar</button>
@@ -937,15 +937,16 @@ async function cargarHistorial(){
 
 function solicitudCard(s,detalle=false){
   return '<div class="solicitud-item">'+
-    '<div class="solicitud-header"><div><span style="font-weight:600;font-size:15px">'+s.periodo+'</span> <span style="font-size:12px;color:var(--muted);margin-left:6px">'+(s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación')+'</span></div>'+badgeHtml(s.estado)+'</div>'+
-    '<div style="font-size:13px;color:var(--muted)">'+s.programa+' · '+s.cantidad_cursos+' curso'+(s.cantidad_cursos>1?'s':'')+'</div>'+
-    (detalle&&s.resp_situacion_economica?'<p style="font-size:13px;color:var(--muted);margin-top:0.5rem">'+s.resp_situacion_economica.substring(0,120)+(s.resp_situacion_economica.length>120?'...':'')+'</p>':'')+
+    '<div class="solicitud-header"><div><span style="font-weight:600;font-size:15px">'+escapeHtml(s.periodo)+'</span> <span style="font-size:12px;color:var(--muted);margin-left:6px">'+(s.tipo_solicitud==='primera_vez'?'Primera vez':'Renovación')+'</span></div>'+badgeHtml(s.estado)+'</div>'+
+    '<div style="font-size:13px;color:var(--muted)">'+escapeHtml(s.programa)+' · '+s.cantidad_cursos+' curso'+(s.cantidad_cursos>1?'s':'')+'</div>'+
+    (detalle&&s.resp_situacion_economica?'<p style="font-size:13px;color:var(--muted);margin-top:0.5rem">'+escapeHtml(s.resp_situacion_economica.substring(0,120))+(s.resp_situacion_economica.length>120?'...':'')+'</p>':'')+
     '<div class="solicitud-footer"><span>'+new Date(s.creado_en).toLocaleDateString('es-CR')+'</span><div style="text-align:right">'+
-    (s.monto_asignado?'<div class="monto-asignado">₡'+s.monto_asignado.toLocaleString('es-CR')+'</div>'+(s.fondos_beca?.nombre?'<div style="font-size:11px;color:var(--muted)">'+s.fondos_beca.nombre+'</div>':''):'<span style="color:var(--muted)">Pendiente de revisión</span>')+
+    (s.monto_asignado?'<div class="monto-asignado">₡'+s.monto_asignado.toLocaleString('es-CR')+'</div>'+(s.fondos_beca?.nombre?'<div style="font-size:11px;color:var(--muted)">'+escapeHtml(s.fondos_beca.nombre)+'</div>':''):'<span style="color:var(--muted)">Pendiente de revisión</span>')+
     '</div></div></div>';
 }
 
 function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
+function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function showTab(tab){
   const tabs=['inicio','solicitar','historial','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
