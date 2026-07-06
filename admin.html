@@ -374,7 +374,7 @@ function showAdminPage(page) {
 }
 
 async function cargarDashboard() {
-  const { data: sols } = await sb.from('solicitudes').select('estado,monto_asignado,periodo,estudiante_id,programa,cantidad_cursos,perfiles(nombre_completo)');
+  const { data: sols } = await sb.from('solicitudes').select('estado,monto_asignado,periodo,estudiante_id,programa,cantidad_cursos,perfiles!solicitudes_estudiante_id_fkey(nombre_completo)');
   if (!sols) return;
   document.getElementById('ds-pendientes').textContent = sols.filter(s=>s.estado==='pendiente').length;
   document.getElementById('ds-revision').textContent = sols.filter(s=>s.estado==='en_revision').length;
@@ -393,7 +393,7 @@ async function cargarDashboard() {
 }
 
 async function cargarSolicitudes() {
-  const { data } = await sb.from('solicitudes').select('*, perfiles(nombre_completo,pais), fondos_beca(nombre)').order('creado_en',{ascending:false});
+  const { data } = await sb.from('solicitudes').select('*, perfiles!solicitudes_estudiante_id_fkey(nombre_completo,pais), fondos_beca(nombre)').order('creado_en',{ascending:false});
   todasSolicitudes = data || []; filtrarSolicitudes();
 }
 
@@ -545,7 +545,7 @@ async function cargarReportes() {
   const pais=document.getElementById('rep-pais').value;
   const dedicacion=document.getElementById('rep-dedicacion').value;
 
-  let q=sb.from('solicitudes').select('*,perfiles(nombre_completo,sexo,pais,ministerio,dedicacion_ministerio),fondos_beca(nombre)');
+  let q=sb.from('solicitudes').select('*,perfiles!solicitudes_estudiante_id_fkey(nombre_completo,sexo,pais,ministerio,dedicacion_ministerio),fondos_beca(nombre)');
   if(estado) q=q.eq('estado',estado);
   if(periodo) q=q.eq('periodo',periodo);
   if(programa) q=q.eq('programa',programa);

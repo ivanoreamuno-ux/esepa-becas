@@ -151,7 +151,7 @@ function showApp(){document.getElementById('page-auth').style.display='none';doc
 
 async function cargarReporte() {
   const periodo=document.getElementById('sel-periodo').value;
-  let q=sb.from('solicitudes').select('*,perfiles(nombre_completo),fondos_beca(nombre)');
+  let q=sb.from('solicitudes').select('*,perfiles!solicitudes_estudiante_id_fkey(nombre_completo),fondos_beca(nombre)');
   if(periodo) q=q.eq('periodo',periodo);
   const {data:sols}=await q;
   if(!sols)return;

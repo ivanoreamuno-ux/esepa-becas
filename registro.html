@@ -389,7 +389,7 @@ async function llamarEdgeFunction(destinatario_email,destinatario_nombre,asunto,
 }
 
 async function cargarTodo(){
-  const{data}=await sb.from('solicitudes').select('*,perfiles(id,nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
+  const{data}=await sb.from('solicitudes').select('*,perfiles!solicitudes_estudiante_id_fkey(id,nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
   todasSolicitudes=data||[];
   const{data:pl}=await sb.from('plantillas_correo').select('*').eq('activa',true).order('nombre');
   plantillas=pl||[];

@@ -357,7 +357,7 @@ async function showApp(){
 }
 
 async function cargarTodas(){
-  const{data}=await sb.from('solicitudes').select('*,perfiles(nombre_completo,telefono,pais,ciudad,iglesia,nombre_pastor,correo_pastor,ministerio,dedicacion_ministerio,tiene_trabajo_secular,descripcion_trabajo_secular,numero_identificacion,sexo,programa,cuatrimestre_ingreso,foto_url),fondos_beca(nombre)').order('creado_en',{ascending:true});
+  const{data}=await sb.from('solicitudes').select('*,perfiles!solicitudes_estudiante_id_fkey(nombre_completo,telefono,pais,ciudad,iglesia,nombre_pastor,correo_pastor,ministerio,dedicacion_ministerio,tiene_trabajo_secular,descripcion_trabajo_secular,numero_identificacion,sexo,programa,cuatrimestre_ingreso,foto_url),fondos_beca(nombre)').order('creado_en',{ascending:true});
   todasSolicitudes=data||[];
   const pend=todasSolicitudes.filter(s=>s.estado==='pendiente').length;
   document.getElementById('badge-pendientes').textContent=pend;
