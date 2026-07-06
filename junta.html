@@ -20,7 +20,7 @@
   .report-header p { color:var(--muted); font-size:13px; margin-top:2px; }
   select,input { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:inherit; }
   select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6478' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; padding-right:28px; }
-  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:2rem; }
+  .stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:2rem; }
   .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; border-top:3px solid var(--brand); }
   .stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
   .stat-value { font-size:26px; font-weight:700; color:var(--brand); }
@@ -97,6 +97,7 @@
       <div class="stat-card"><div class="stat-label">Aprobado pendiente</div><div class="stat-value" id="r-aprobado">—</div><div class="stat-sub">Aprobado, no aplicado</div></div>
       <div class="stat-card"><div class="stat-label">Beneficiarios</div><div class="stat-value" id="r-beneficiarios">—</div><div class="stat-sub">Estudiantes beneficiados</div></div>
       <div class="stat-card"><div class="stat-label">Solicitudes pendientes</div><div class="stat-value" id="r-pendientes">—</div><div class="stat-sub">En espera de revisión</div></div>
+      <div class="stat-card" style="border-top-color:#7e22ce"><div class="stat-label">En lista de espera</div><div class="stat-value" id="r-espera" style="color:#7e22ce">—</div><div class="stat-sub">Aptas, sin fondo asignado</div></div>
     </div>
     <div class="grid-2">
       <div class="card"><div class="card-title">Fondos de beca</div><div id="r-fondos"><p style="color:var(--muted);font-size:13px">Cargando...</p></div></div>
@@ -158,6 +159,8 @@ async function cargarReporte() {
   const aplicadas=sols.filter(s=>s.estado==='aplicada');
   const aprobadas=sols.filter(s=>s.estado==='aprobada');
   const pendientes=sols.filter(s=>['pendiente','en_revision'].includes(s.estado));
+  const enEspera=sols.filter(s=>s.estado==='en_lista_espera');
+  document.getElementById('r-espera').textContent=enEspera.length;
   document.getElementById('r-desembolsado').textContent='₡'+aplicadas.reduce((sum,s)=>sum+(s.monto_asignado||0),0).toLocaleString('es-CR');
   document.getElementById('r-desembolsado-sub').textContent=aplicadas.length+' pago'+(aplicadas.length!==1?'s':'')+' aplicado'+(aplicadas.length!==1?'s':'');
   document.getElementById('r-aprobado').textContent='₡'+aprobadas.reduce((sum,s)=>sum+(s.monto_asignado||0),0).toLocaleString('es-CR');

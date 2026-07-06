@@ -44,6 +44,7 @@
   .badge-rechazada{background:var(--danger-bg);color:var(--danger);}
   .badge-pendiente{background:var(--warning-bg);color:var(--warning);}
   .badge-en_revision{background:var(--info-bg);color:var(--info);}
+  .badge-en_lista_espera{background:#f3e8ff;color:#7e22ce;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all 0.15s;}
   .btn-primary{background:linear-gradient(135deg,var(--orange),#d4693d);color:white;}
   .btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#9e3e1e,var(--orange));}
@@ -169,7 +170,7 @@
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:1rem;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">
-        <select id="rep-f-estado" onchange="renderReporte()"><option value="">Todos los estados</option><option value="aprobada">Aprobada</option><option value="procesada_q10">Procesada Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
+        <select id="rep-f-estado" onchange="renderReporte()"><option value="">Todos los estados</option><option value="en_lista_espera">Lista de espera</option><option value="aprobada">Aprobada</option><option value="procesada_q10">Procesada Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
         <select id="rep-f-periodo" onchange="renderReporte()"><option value="">Todos los períodos</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
         <input type="text" id="rep-buscar" placeholder="Buscar..." oninput="renderReporte()" style="min-width:180px">
       </div>
@@ -360,7 +361,7 @@ const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentUser=null,solicitudActual=null,plantillaActual=null;
 let todasSolicitudes=[],plantillas=[];
-const ESTADOS={pendiente:'Pendiente',en_revision:'En revision',aprobada:'Aprobada',rechazada:'Rechazada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado',no_matriculado:'No matriculado',aplicada:'Aplicada'};
+const ESTADOS={pendiente:'Pendiente',en_revision:'En revision',en_lista_espera:'Lista de espera',aprobada:'Aprobada',rechazada:'Rechazada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado',no_matriculado:'No matriculado',aplicada:'Aplicada'};
 
 async function init(){
   const{data:{session}}=await sb.auth.getSession();

@@ -42,6 +42,7 @@
   .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
   .badge-pendiente { background:var(--warning-bg); color:var(--warning); }
   .badge-en_revision { background:var(--info-bg); color:var(--info); }
+  .badge-en_lista_espera { background:#f3e8ff; color:#7e22ce; }
   .badge-aprobada { background:var(--success-bg); color:var(--success); }
   .badge-rechazada { background:var(--danger-bg); color:var(--danger); }
   .badge-aplicada { background:#f0f9ff; color:#0369a1; }
@@ -153,7 +154,7 @@
       <div id="adm-solicitudes" class="page">
         <div class="page-title">Solicitudes de beca</div>
         <div class="filters">
-          <select id="f-estado" onchange="filtrarSolicitudes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select>
+          <select id="f-estado" onchange="filtrarSolicitudes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="en_lista_espera">Lista de espera</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select>
           <select id="f-periodo" onchange="filtrarSolicitudes()"><option value="">Todos los períodos</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
           <div style="display:flex;gap:8px;min-width:200px">
             <input type="text" id="f-buscar" placeholder="Buscar por nombre..." onkeydown="if(event.key==='Enter'){event.preventDefault();filtrarSolicitudes();}" style="flex:1">
@@ -193,7 +194,7 @@
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem">
           <select id="rep-periodo" onchange="cambiarPeriodoReporte()" style="font-weight:600;color:var(--brand)"><option value="">Cargando períodos...</option></select>
-          <select id="rep-estado" onchange="cargarReportes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="procesada_q10">En Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
+          <select id="rep-estado" onchange="cargarReportes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="en_lista_espera">Lista de espera</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="procesada_q10">En Q10</option><option value="notificado">Notificado</option><option value="matriculado">Matriculado</option><option value="no_matriculado">No matriculado</option></select>
           <select id="rep-programa" onchange="cargarReportes()"><option value="">Todos los programas</option><option>Bachillerato en Teología</option><option>Bachillerato en Ministerio Pastoral</option><option>Bachillerato en Consejería Bíblica</option><option>Bachillerato en Estudios Cristianos</option><option>Bachillerato en Misiones</option><option>Maestría en Exégesis Bíblica</option><option>Maestría en Liderazgo Pastoral</option><option>Diplomado en Apologética</option><option>Diplomado en Biblia</option><option>Diplomado en Consejería Bíblica</option><option>Diplomado en Ministerio Pastoral</option><option>Diplomado en Misiones</option><option>Diplomado en Estudios Cristianos</option></select>
           <select id="rep-sexo" onchange="cargarReportes()"><option value="">Todos (sexo)</option><option value="Hombre">Hombres</option><option value="Mujer">Mujeres</option></select>
           <select id="rep-pais" onchange="cargarReportes()"><option value="">Todos los países</option><option value="Costa Rica">Costa Rica</option><option value="Guatemala">Guatemala</option><option value="Honduras">Honduras</option><option value="El Salvador">El Salvador</option><option value="Nicaragua">Nicaragua</option><option value="Panamá">Panamá</option><option value="Colombia">Colombia</option><option value="Venezuela">Venezuela</option><option value="México">México</option></select>
@@ -271,7 +272,7 @@
     <div style="border-top:1px solid var(--border);padding-top:1.25rem;margin-top:1.25rem">
       <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:1rem">Gestión de beca</div>
       <div class="form-row">
-        <div class="form-group"><label>Cambiar estado</label><select id="modal-estado" style="width:100%"><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select></div>
+        <div class="form-group"><label>Cambiar estado</label><select id="modal-estado" style="width:100%"><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="en_lista_espera">Lista de espera</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select></div>
         <div class="form-group"><label>Fondo de beca</label><select id="modal-fondo" style="width:100%"><option value="">Sin fondo asignado</option></select></div>
       </div>
       <div class="form-group"><label>Monto asignado (₡)</label><input type="number" id="modal-monto" placeholder="0" style="width:100%"></div>
@@ -633,7 +634,7 @@ function filtrarEstudiantes() {
   tbody.innerHTML = filtrados.map(e=>'<tr><td><strong>'+escapeHtml(e.nombre_completo)+'</strong></td><td style="font-size:12px">'+escapeHtml(e.programa||'—')+'</td><td style="font-size:12px">'+escapeHtml(e.iglesia||'—')+'</td><td style="font-size:12px">'+escapeHtml(e.pais||'—')+'</td><td style="text-align:center">'+(perfilCompleto(e)?'<span style="color:var(--success);font-size:13px">✓ Completo</span>':'<span style="color:var(--warning);font-size:13px">⚠ Incompleto</span>')+'</td><td style="text-align:center">—</td></tr>').join('');
 }
 
-function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
+function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',en_lista_espera:'Lista de espera',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
 function closeModal(id){document.getElementById(id).classList.remove('open');const a=document.getElementById('alert-modal');if(a)a.innerHTML='';}
 function showAlert(zone,msg,type){const el=document.getElementById('alert-'+zone);if(!el)return;el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',5000);}
 

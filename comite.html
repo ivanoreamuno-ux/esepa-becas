@@ -81,6 +81,7 @@
   .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
   .badge-pendiente{background:var(--warning-bg);color:var(--warning);}
   .badge-en_revision{background:var(--info-bg);color:var(--info);}
+  .badge-en_lista_espera{background:#f3e8ff;color:#7e22ce;}
   .badge-aprobada{background:var(--success-bg);color:var(--success);}
   .badge-rechazada{background:var(--danger-bg);color:var(--danger);}
   .badge-aplicada{background:#f0f9ff;color:#0369a1;}
@@ -143,6 +144,7 @@
       <div class="sidebar-section">Revisión</div>
       <div class="sidebar-item active" onclick="showPage2('pendientes')"><span>🔴</span> Por revisar <span class="sidebar-badge" id="badge-pendientes">0</span></div>
       <div class="sidebar-item" onclick="showPage2('en_revision')"><span>🔵</span> En revisión</div>
+      <div class="sidebar-item" onclick="showPage2('en_lista_espera')"><span>🕒</span> Lista de espera <span class="sidebar-badge" id="badge-en_lista_espera">0</span></div>
       <div class="sidebar-section">Historial</div>
       <div class="sidebar-item" onclick="showPage2('aprobadas')"><span>✅</span> Aprobadas</div>
       <div class="sidebar-item" onclick="showPage2('rechazadas')"><span>❌</span> Rechazadas</div>
@@ -170,7 +172,7 @@
         </div>
 
         <!-- STATS GRID -->
-        <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)">
           <div class="stat-card" style="border-top-color:var(--danger);cursor:pointer" onclick="showPage2('pendientes')">
             <div class="stat-label">Por revisar</div>
             <div class="stat-value" id="d-pendientes" style="color:var(--danger)">—</div>
@@ -180,6 +182,11 @@
             <div class="stat-label">En revisión</div>
             <div class="stat-value" id="d-revision" style="color:var(--info)">—</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px">En proceso</div>
+          </div>
+          <div class="stat-card" style="border-top-color:#7e22ce;cursor:pointer" onclick="showPage2('en_lista_espera')">
+            <div class="stat-label">Lista de espera</div>
+            <div class="stat-value" id="d-espera" style="color:#7e22ce">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Aptas, sin fondo aún</div>
           </div>
           <div class="stat-card" style="border-top-color:var(--success);cursor:pointer" onclick="showPage2('aprobadas')">
             <div class="stat-label">Aprobadas</div>
@@ -261,6 +268,13 @@
         <div class="page-sub">Solicitudes que ya iniciaste a revisar. Podés completar la decisión cuando estés listo.</div>
         <div id="lista-en_revision"></div>
         <div id="detail-en_revision" class="detail-view"></div>
+      </div>
+
+      <div id="p-en_lista_espera" class="page">
+        <div class="page-title">Lista de espera</div>
+        <div class="page-sub">Solicitudes ya evaluadas y aptas, en espera de que se consiga el fondo o cupo necesario.</div>
+        <div id="lista-en_lista_espera"></div>
+        <div id="detail-en_lista_espera" class="detail-view"></div>
       </div>
 
       <div id="p-aprobadas" class="page">
@@ -373,6 +387,9 @@ async function cargarTodas(){
   const pend=todasSolicitudes.filter(s=>s.estado==='pendiente').length;
   document.getElementById('badge-pendientes').textContent=pend;
   document.getElementById('badge-pendientes').style.display=pend>0?'inline':'none';
+  const espera=todasSolicitudes.filter(s=>s.estado==='en_lista_espera').length;
+  document.getElementById('badge-en_lista_espera').textContent=espera;
+  document.getElementById('badge-en_lista_espera').style.display=espera>0?'inline':'none';
 }
 
 async function cargarDashboard(){
@@ -380,6 +397,7 @@ async function cargarDashboard(){
   todasSolicitudes.forEach(s=>counts[s.estado]=(counts[s.estado]||0)+1);
   document.getElementById('d-pendientes').textContent=counts.pendiente||0;
   document.getElementById('d-revision').textContent=counts.en_revision||0;
+  document.getElementById('d-espera').textContent=todasSolicitudes.filter(s=>s.estado==='en_lista_espera').length;
   document.getElementById('d-aprobadas').textContent=(counts.aprobada||0)+(counts.aplicada||0);
   document.getElementById('d-rechazadas').textContent=counts.rechazada||0;
   document.getElementById('dash-updated').textContent='Actualizado: '+new Date().toLocaleString('es-CR');
@@ -484,7 +502,7 @@ async function cargarDashboard(){
 function showPage2(page){
   paginaActual=page;
   document.querySelectorAll('.sidebar-item').forEach((el,i)=>{
-    const pages=['pendientes','en_revision','aprobadas','rechazadas','dashboard','periodos'];
+    const pages=['pendientes','en_revision','en_lista_espera','aprobadas','rechazadas','dashboard','periodos'];
     el.classList.toggle('active',pages[i]===page);
   });
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -493,16 +511,19 @@ function showPage2(page){
   else if(page!=='dashboard')renderLista(page);
 }
 
+const ESTADOS_POR_PAGINA={pendientes:['pendiente'],en_revision:['en_revision'],en_lista_espera:['en_lista_espera'],aprobadas:['aprobada','aplicada'],rechazadas:['rechazada']};
+
 function renderLista(estado){
   const lista=document.getElementById('lista-'+estado);
   const detail=document.getElementById('detail-'+estado);
   detail.classList.remove('open');lista.style.display='block';
-  const filtradas=todasSolicitudes.filter(s=>s.estado===estado);
-  if(!filtradas.length){lista.innerHTML='<div class="empty"><div class="empty-icon">'+(estado==='pendiente'?'🎉':'📂')+'</div><h3>'+(estado==='pendiente'?'¡Todo al día! Sin solicitudes pendientes.':'Sin solicitudes en este estado.')+'</h3></div>';return;}
+  const estadosValidos=ESTADOS_POR_PAGINA[estado]||[estado];
+  const filtradas=todasSolicitudes.filter(s=>estadosValidos.includes(s.estado));
+  if(!filtradas.length){lista.innerHTML='<div class="empty"><div class="empty-icon">'+(estado==='pendientes'?'🎉':'📂')+'</div><h3>'+(estado==='pendientes'?'¡Todo al día! Sin solicitudes pendientes.':'Sin solicitudes en este estado.')+'</h3></div>';return;}
   lista.innerHTML=filtradas.map(s=>{
     const dias=Math.floor((Date.now()-new Date(s.creado_en).getTime())/86400000);
     const c=calcCosto(s.programa,s.cantidad_cursos||1);
-    return '<div class="sol-card'+(dias>5&&estado==='pendiente'?' urgente':'')+'" onclick="abrirDetalle(\''+s.id+'\',\''+estado+'\')">' +
+    return '<div class="sol-card'+(dias>5&&estado==='pendientes'?' urgente':'')+'" onclick="abrirDetalle(\''+s.id+'\',\''+estado+'\')">' +
       '<div class="sol-card-header"><div style="display:flex;align-items:center;gap:10px">'+
         '<div style="width:40px;height:40px;border-radius:50%;background:var(--brand-light);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
           (s.perfiles?.foto_url?'<img src="'+s.perfiles.foto_url+'" alt="" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:16px;color:var(--brand-mid)">👤</span>')+
@@ -596,7 +617,7 @@ async function abrirDetalle(id,estado){
       if(!asignaciones.length){
         sel.innerHTML='<option value="">⚠ Sin fondos asignados a este período</option>';
       } else {
-        sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+asignaciones.map(a=>'<option value="'+a.fondo_id+'" data-asignacion="'+a.id+'" data-disponible="'+a.monto_disponible+'">'+(a.fondos_beca?.nombre||'Fondo')+' (₡'+a.monto_disponible.toLocaleString('es-CR')+' disp. en este período)</option>').join('');
+        sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+asignaciones.map(a=>'<option value="'+a.fondo_id+'" data-asignacion="'+a.id+'" data-disponible="'+a.monto_disponible+'"'+(s.fondo_id===a.fondo_id?' selected':'')+'>'+(a.fondos_beca?.nombre||'Fondo')+' (₡'+a.monto_disponible.toLocaleString('es-CR')+' disp. en este período)</option>').join('');
       }
     }
   }
@@ -612,22 +633,25 @@ function pregBloque(num,titulo,resp,resp2,skip){
 }
 
 function panelDecision(s){
-  return '<div class="decision-panel">'+
+  const yaEnEspera=s.estado==='en_lista_espera';
+  return (yaEnEspera?'<div class="alert alert-warning" style="margin-bottom:1rem">🕒 <strong>Esta solicitud está en lista de espera</strong> desde el '+new Date(s.revisado_en||s.creado_en).toLocaleDateString('es-CR')+'. Podés aprobarla o rechazarla cuando corresponda, o dejarla como está.</div>':'')+
+    '<div class="decision-panel">'+
     '<div class="decision-panel-title">⚖️ Decisión del Comité</div>'+
     '<div id="alert-decision-'+s.id+'"></div>'+
     '<div class="form-row">'+
       '<div class="form-group"><label>Fondo de beca</label><select id="sel-fondo-'+s.id+'" style="width:100%"><option>Cargando...</option></select></div>'+
-      '<div class="form-group"><label>Monto a asignar (₡)</label><input type="number" id="inp-monto-'+s.id+'" placeholder="0" style="width:100%"></div>'+
+      '<div class="form-group"><label>Monto a asignar (₡)</label><input type="number" id="inp-monto-'+s.id+'" placeholder="0" value="'+(s.monto_asignado||'')+'" style="width:100%"></div>'+
     '</div>'+
     '<div class="form-group"><label>Notas del Comité (internas — no visibles para el estudiante)</label>'+
-      '<textarea id="inp-notas-'+s.id+'" rows="4" style="width:100%" placeholder="Documentá el análisis del comité: fortalezas de la solicitud, preocupaciones, condiciones de la aprobación, motivos del rechazo, etc."></textarea>'+
+      '<textarea id="inp-notas-'+s.id+'" rows="4" style="width:100%" placeholder="Documentá el análisis del comité: fortalezas de la solicitud, preocupaciones, condiciones de la aprobación, motivos del rechazo, etc.">'+(s.notas_comite?escapeHtml(s.notas_comite):'')+'</textarea>'+
     '</div>'+
     '<div class="form-group"><label>Mensaje para el estudiante (sí visible — aparecerá en su portal)</label>'+
-      '<textarea id="inp-comentario-est-'+s.id+'" rows="3" style="width:100%" placeholder="Ej: ¡Felicidades! Valoramos tu compromiso ministerial. Que este apoyo sea de bendición en tu formación."></textarea>'+
+      '<textarea id="inp-comentario-est-'+s.id+'" rows="3" style="width:100%" placeholder="Ej: ¡Felicidades! Valoramos tu compromiso ministerial. Que este apoyo sea de bendición en tu formación.">'+(s.comentario_comite_estudiante?escapeHtml(s.comentario_comite_estudiante):'')+'</textarea>'+
       '<p style="font-size:11px;color:var(--muted);margin-top:4px">Este mensaje lo verá el estudiante directamente en su pantalla de inicio. Usalo para animarlo o explicar brevemente la decisión.</p>'+
     '</div>'+
-    '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:1rem">'+
+    '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap">'+
       '<button class="btn btn-danger" onclick="tomarDecision(\''+s.id+'\',\'rechazada\')">✕ Rechazar solicitud</button>'+
+      '<button class="btn btn-secondary" style="border-color:#7e22ce;color:#7e22ce" onclick="tomarDecision(\''+s.id+'\',\'en_lista_espera\')">🕒 Poner en lista de espera</button>'+
       '<button class="btn btn-success" onclick="tomarDecision(\''+s.id+'\',\'aprobada\')">✓ Aprobar solicitud</button>'+
     '</div>'+
   '</div>';
@@ -655,6 +679,7 @@ async function tomarDecision(id,decision){
 
   if(decision==='aprobada'&&!notas){alertEl.innerHTML='<div class="alert alert-danger">Agregá notas que documenten la decisión de aprobación.</div>';return;}
   if(decision==='rechazada'&&!notas){alertEl.innerHTML='<div class="alert alert-danger">Debés documentar el motivo del rechazo.</div>';return;}
+  if(decision==='en_lista_espera'&&!notas){alertEl.innerHTML='<div class="alert alert-danger">Documentá por qué se está poniendo en lista de espera (ej: pendiente de fondos).</div>';return;}
 
   if(fondo&&monto&&decision==='aprobada'){
     if(!asignacionId){alertEl.innerHTML='<div class="alert alert-danger">Este fondo no tiene una asignación válida para este período. Verificá en Períodos de solicitud.</div>';return;}
@@ -664,13 +689,14 @@ async function tomarDecision(id,decision){
   }
 
   const updates={
-    estado:decision,decision_comite:decision,
+    estado:decision,
     fondo_id:fondo||null,monto_asignado:monto||null,
     asignacion_fondo_periodo_id:asignacionId||null,
     notas_comite:notas,notas_admin:notas,
     comentario_comite_estudiante:comentarioEst,
     revisado_por:currentComite.id,revisado_en:new Date().toISOString()
   };
+  if(decision==='aprobada'||decision==='rechazada'){updates.decision_comite=decision;}
 
   const{error}=await sb.from('solicitudes').update(updates).eq('id',id);
   if(error){alertEl.innerHTML='<div class="alert alert-danger">Error: '+error.message+'</div>';return;}
@@ -890,7 +916,7 @@ function volverLista(estado){
 }
 
 function dr(label,val,isHtml){return '<div class="detail-row"><span class="detail-label">'+label+'</span><span class="detail-value">'+(val?(isHtml?val:escapeHtml(val)):'—')+'</span></div>';}
-function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
+function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',en_lista_espera:'Lista de espera',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
 function closeModal(id){document.getElementById(id).classList.remove('open');const a=document.getElementById('alert-modal-periodo');if(a)a.innerHTML='';}
 function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function showAlert(zone,msg,type){const el=document.getElementById('alert-'+zone);if(!el)return;el.innerHTML='<div class="alert alert-'+type+'">'+msg+'</div>';setTimeout(()=>el.innerHTML='',6000);}

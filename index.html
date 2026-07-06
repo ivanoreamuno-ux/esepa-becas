@@ -56,6 +56,7 @@
   .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:500; }
   .badge-pendiente { background:var(--warning-bg); color:var(--warning); }
   .badge-en_revision { background:var(--info-bg); color:var(--info); }
+  .badge-en_lista_espera { background:#f3e8ff; color:#7e22ce; }
   .badge-aprobada { background:var(--success-bg); color:var(--success); }
   .badge-rechazada { background:var(--danger-bg); color:var(--danger); }
   .badge-aplicada { background:#f0f9ff; color:#0369a1; }
@@ -747,6 +748,20 @@ function tarjetaEstadoHtml(s){
     </div>`;
   }
 
+  if(s.estado==='en_lista_espera'){
+    return `<div class="card" style="border-left:4px solid #7e22ce;background:linear-gradient(135deg,#faf5ff,white)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+        <span class="card-title">🕒 Tu solicitud está en lista de espera</span>${badgeHtml(s.estado)}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:0.75rem">${escapeHtml(s.programa)} · ${escapeHtml(s.periodo)}</div>
+      <p class="text-muted" style="margin-bottom:1rem">Tu solicitud ya fue evaluada por el Comité de Becas y cumple con los requisitos. Está en lista de espera mientras se consigue el fondo disponible para asignarte una beca. Te notificaremos apenas haya una decisión.</p>
+      ${s.comentario_comite_estudiante?`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:1rem">
+        <div style="font-size:12px;font-weight:600;color:#7e22ce;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px">💬 Mensaje del Comité de Becas</div>
+        <p style="font-size:13px;color:var(--text);font-style:italic">"${escapeHtml(s.comentario_comite_estudiante)}"</p>
+      </div>`:''}
+    </div>`;
+  }
+
   // Pendiente o en revisión
   const puedeEditar=periodoActivo&&periodoEstaAbiertoHoy(periodoActivo)&&s.periodo===periodoActivo.periodo_academico;
   return `<div class="card" style="border-left:4px solid var(--warning)">
@@ -945,7 +960,7 @@ function solicitudCard(s,detalle=false){
     '</div></div></div>';
 }
 
-function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
+function badgeHtml(e){const l={pendiente:'Pendiente',en_revision:'En revisión',en_lista_espera:'Lista de espera',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada'};return '<span class="badge badge-'+e+'">'+(l[e]||e)+'</span>';}
 function escapeHtml(str){if(!str)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function showTab(tab){
   const tabs=['inicio','solicitar','historial','perfil'];
