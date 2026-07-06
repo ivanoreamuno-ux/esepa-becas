@@ -55,7 +55,7 @@
   <!-- LOGIN -->
   <div id="form-login">
     <div class="form-group"><label>Correo electrónico</label><input type="email" id="email" placeholder="tu@correo.com" autocomplete="email"></div>
-    <div class="form-group"><label>Contraseña</label><input type="password" id="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="password" onkeydown="if(event.key==='Enter'){event.preventDefault();login();}" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="btn btn-primary" onclick="login()" id="btn-login">Ingresar</button>
     <div class="divider">¿Es tu primera vez?</div>
     <div class="register-link"><a onclick="showRegister()">Crear cuenta de estudiante →</a></div>

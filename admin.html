@@ -103,7 +103,7 @@
       <p>Becas ESEPA — Acceso restringido</p>
       <div id="alert-auth"></div>
       <div class="form-group" style="text-align:left;margin-bottom:0.75rem"><label>Correo</label><input type="email" id="adm-email" placeholder="admin@esepa.org" style="width:100%"></div>
-      <div class="form-group" style="text-align:left;margin-bottom:1.25rem"><label>Contraseña</label><input type="password" id="adm-pw" style="width:100%"></div>
+      <div class="form-group" style="text-align:left;margin-bottom:1.25rem"><label>Contraseña</label><input type="password" id="adm-pw" onkeydown="if(event.key==='Enter'){event.preventDefault();adminLogin();}" style="width:100%"></div>
       <button class="btn btn-primary" style="width:100%" onclick="adminLogin()" id="btn-adm-login">Ingresar</button>
     </div>
   </div>
@@ -155,7 +155,10 @@
         <div class="filters">
           <select id="f-estado" onchange="filtrarSolicitudes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select>
           <select id="f-periodo" onchange="filtrarSolicitudes()"><option value="">Todos los períodos</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
-          <input type="text" id="f-buscar" placeholder="Buscar por nombre..." oninput="filtrarSolicitudes()" style="min-width:200px">
+          <div style="display:flex;gap:8px;min-width:200px">
+            <input type="text" id="f-buscar" placeholder="Buscar por nombre..." onkeydown="if(event.key==='Enter'){event.preventDefault();filtrarSolicitudes();}" style="flex:1">
+            <button class="btn btn-secondary btn-sm" onclick="filtrarSolicitudes()">🔍 Buscar</button>
+          </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <table>

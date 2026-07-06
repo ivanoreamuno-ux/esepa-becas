@@ -60,7 +60,7 @@
       <p>Junta Directiva — Solo lectura</p>
       <div id="alert-auth"></div>
       <div style="text-align:left;margin-bottom:0.75rem"><label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase">Correo</label><input type="email" id="j-email" placeholder="junta@esepa.org" style="width:100%"></div>
-      <div style="text-align:left;margin-bottom:1.25rem"><label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase">Contraseña</label><input type="password" id="j-pw" style="width:100%"></div>
+      <div style="text-align:left;margin-bottom:1.25rem"><label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase">Contraseña</label><input type="password" id="j-pw" onkeydown="if(event.key==='Enter'){event.preventDefault();juntaLogin();}" style="width:100%"></div>
       <button class="btn btn-primary" style="width:100%" onclick="juntaLogin()" id="btn-j-login">Ingresar</button>
     </div>
   </div>

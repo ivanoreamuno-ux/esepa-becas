@@ -158,7 +158,7 @@
       <div id="alert-auth"></div>
       <div id="form-login">
         <div class="form-group"><label>Correo electrónico</label><input type="email" id="login-email" placeholder="tu@correo.com"></div>
-        <div class="form-group"><label>Contraseña</label><input type="password" id="login-password" placeholder="••••••••"></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="login-password" onkeydown="if(event.key==='Enter'){event.preventDefault();login();}" placeholder="••••••••"></div>
         <button class="btn btn-primary btn-full mt-2" onclick="login()" id="btn-login">Ingresar</button>
         <div class="divider mt-2">¿No tenés cuenta?</div>
         <button class="btn btn-secondary btn-full" onclick="showRegister()">Crear cuenta nueva</button>
