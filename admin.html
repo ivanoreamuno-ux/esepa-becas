@@ -157,8 +157,8 @@
           <select id="f-estado" onchange="filtrarSolicitudes()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_revision">En revisión</option><option value="en_lista_espera">Lista de espera</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option><option value="aplicada">Aplicada</option></select>
           <select id="f-periodo" onchange="filtrarSolicitudes()"><option value="">Todos los períodos</option><option value="2C 2026">2C 2026</option><option value="3C 2026">3C 2026</option><option value="1C 2027">1C 2027</option></select>
           <div style="display:flex;gap:8px;min-width:200px">
-            <input type="text" id="f-buscar" placeholder="Buscar por nombre..." onkeydown="if(event.key==='Enter'){event.preventDefault();filtrarSolicitudes();}" style="flex:1">
-            <button class="btn btn-secondary btn-sm" onclick="filtrarSolicitudes()">🔍 Buscar</button>
+            <input type="text" id="f-buscar" placeholder="Buscar por nombre..." oninput="filtrarSolicitudes()" style="flex:1">
+            <button class="btn btn-secondary btn-sm" onclick="exportarSolicitudesCSV()">⬇ Exportar CSV</button>
           </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
@@ -397,7 +397,7 @@ async function cargarDashboard() {
 }
 
 async function cargarSolicitudes() {
-  const { data } = await sb.from('solicitudes').select('*, perfiles!solicitudes_estudiante_id_fkey(nombre_completo,pais), fondos_beca(nombre)').order('creado_en',{ascending:false});
+  const { data } = await sb.from('solicitudes').select('*, perfiles!solicitudes_estudiante_id_fkey(nombre_completo,pais,iglesia,nombre_pastor,ministerio,telefono), fondos_beca(nombre)').order('creado_en',{ascending:false});
   todasSolicitudes = data || []; filtrarSolicitudes();
 }
 
@@ -406,12 +406,55 @@ function filtrarSolicitudes() {
   const periodo = document.getElementById('f-periodo').value;
   const buscar = document.getElementById('f-buscar').value.toLowerCase();
   const filtradas = todasSolicitudes.filter(s => (!estado||s.estado===estado) && (!periodo||s.periodo===periodo) && (!buscar||s.perfiles?.nombre_completo?.toLowerCase().includes(buscar)));
+  ultimasSolicitudesFiltradas = filtradas;
   const tbody = document.getElementById('tabla-solicitudes');
   if (!filtradas.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">Sin resultados</td></tr>'; return; }
   tbody.innerHTML = filtradas.map(s => {
     const c = calcularCosto(s.programa, s.cantidad_cursos||1);
     return '<tr><td><strong>' + escapeHtml(s.perfiles?.nombre_completo||'—') + '</strong><br><span style="color:var(--muted);font-size:11px">' + escapeHtml(s.perfiles?.pais||'') + '</span></td><td>' + escapeHtml(s.periodo) + '</td><td style="font-size:12px">' + escapeHtml(s.programa) + '</td><td style="text-align:center">' + (s.cantidad_cursos||1) + '</td><td style="font-weight:600;color:var(--brand)">₡' + c.total.toLocaleString('es-CR') + '</td><td>' + badgeHtml(s.estado) + '</td><td>' + (s.monto_asignado ? '<span style="color:var(--success);font-weight:600">₡' + s.monto_asignado.toLocaleString('es-CR') + '</span>' : '<span style="color:var(--muted)">—</span>') + '</td><td><button class="btn btn-secondary btn-sm" onclick="abrirSolicitud(\'' + s.id + '\')">Revisar</button></td></tr>';
   }).join('');
+}
+
+let ultimasSolicitudesFiltradas = [];
+
+function csvEscape(val){
+  if(val===null||val===undefined) return '';
+  const s = String(val);
+  if(/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+
+function exportarSolicitudesCSV(){
+  const filas = ultimasSolicitudesFiltradas;
+  if(!filas.length){ alert('No hay solicitudes que coincidan con el filtro actual para exportar.'); return; }
+  const encabezados = ['Nombre','País','Iglesia','Pastor','Ministerio','Teléfono','Programa','Período','Cursos','Estado','Fondo','Monto asignado','Costo total'];
+  const lineas = [encabezados.map(csvEscape).join(',')];
+  filas.forEach(s=>{
+    const c = calcularCosto(s.programa, s.cantidad_cursos||1);
+    lineas.push([
+      s.perfiles?.nombre_completo||'',
+      s.perfiles?.pais||'',
+      s.perfiles?.iglesia||'',
+      s.perfiles?.nombre_pastor||'',
+      s.perfiles?.ministerio||'',
+      s.perfiles?.telefono||'',
+      s.programa||'',
+      s.periodo||'',
+      s.cantidad_cursos||1,
+      s.estado||'',
+      s.fondos_beca?.nombre||'',
+      s.monto_asignado||0,
+      c.total
+    ].map(csvEscape).join(','));
+  });
+  const csv = '\ufeff' + lineas.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'solicitudes_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function abrirSolicitud(id) {
