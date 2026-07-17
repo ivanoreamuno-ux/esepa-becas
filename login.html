@@ -39,6 +39,12 @@
   #form-confirm p{font-size:14px;color:var(--muted);line-height:1.6;}
   .back-link{display:block;text-align:center;font-size:13px;color:var(--navy);cursor:pointer;margin-top:1rem;font-weight:500;}
   .back-link:hover{text-decoration:underline;}
+  .forgot-link{text-align:right;font-size:12px;margin-top:-6px;margin-bottom:1rem;}
+  .forgot-link a{color:var(--muted);text-decoration:none;cursor:pointer;}
+  .forgot-link a:hover{color:var(--navy);text-decoration:underline;}
+  #form-forgot{display:none;}
+  #form-newpassword{display:none;}
+  .success{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:1rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
 </style>
 </head>
 <body>
@@ -56,6 +62,7 @@
   <div id="form-login">
     <div class="form-group"><label>Correo electrónico</label><input type="email" id="email" placeholder="tu@correo.com" autocomplete="email"></div>
     <div class="form-group"><label>Contraseña</label><input type="password" id="password" onkeydown="if(event.key==='Enter'){event.preventDefault();login();}" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="forgot-link"><a onclick="showForgot()">¿Olvidaste tu contraseña?</a></div>
     <button class="btn btn-primary" onclick="login()" id="btn-login">Ingresar</button>
     <div class="divider">¿Es tu primera vez?</div>
     <div class="register-link"><a onclick="showRegister()">Crear cuenta de estudiante →</a></div>
@@ -70,6 +77,20 @@
     </div>
     <button class="btn btn-primary" onclick="register()" id="btn-register">Crear cuenta</button>
     <span class="back-link" onclick="showLogin()">← Volver al ingreso</span>
+  </div>
+
+  <!-- FORGOT PASSWORD (request link) -->
+  <div id="form-forgot">
+    <div class="form-group"><label>Correo electrónico</label><input type="email" id="forgot-email" placeholder="tu@correo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();sendResetLink();}"></div>
+    <button class="btn btn-primary" onclick="sendResetLink()" id="btn-forgot">Enviar enlace de recuperación</button>
+    <span class="back-link" onclick="showLogin()">← Volver al ingreso</span>
+  </div>
+
+  <!-- NEW PASSWORD (after clicking email link) -->
+  <div id="form-newpassword">
+    <div class="form-group"><label>Nueva contraseña</label><input type="password" id="new-password" placeholder="Mín. 6 caracteres"></div>
+    <div class="form-group"><label>Confirmar contraseña</label><input type="password" id="new-password-confirm" placeholder="Repetí la contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();updatePassword();}"></div>
+    <button class="btn btn-primary" onclick="updatePassword()" id="btn-newpassword">Guardar nueva contraseña</button>
   </div>
 
   <!-- CONFIRM -->
@@ -97,6 +118,40 @@ const ROLE_ROUTES={
 };
 
 async function init(){
+  // If the user arrived here via a password-recovery email link, Supabase fires
+  // this event instead of a normal session — show the "set new password" form.
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      hideAll();
+      document.getElementById('form-newpassword').style.display='block';
+    }
+  });
+  const{data:{session}}=await sb.auth.getSession();
+  if(session && !window.location.hash.includes('type=recovery')) await redirect(session.user.id);
+}
+
+async function sendResetLink(){
+  const email=document.getElementById('forgot-email').value.trim();
+  if(!email){showAlert('Ingresá tu correo electrónico.');return;}
+  const btn=document.getElementById('btn-forgot');btn.textContent='Enviando...';btn.disabled=true;
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
+  btn.textContent='Enviar enlace de recuperación';btn.disabled=false;
+  if(error){showAlert('No se pudo enviar el enlace. Intentá de nuevo.');return;}
+  clearAlert();
+  const el=document.getElementById('alert-box');el.className='success';el.textContent='Si el correo existe en el sistema, te enviamos un enlace para restablecer tu contraseña.';el.style.display='block';
+}
+
+async function updatePassword(){
+  const pw=document.getElementById('new-password').value;
+  const pw2=document.getElementById('new-password-confirm').value;
+  if(!pw||!pw2){showAlert('Completá ambos campos.');return;}
+  if(pw.length<6){showAlert('La contraseña debe tener al menos 6 caracteres.');return;}
+  if(pw!==pw2){showAlert('Las contraseñas no coinciden.');return;}
+  const btn=document.getElementById('btn-newpassword');btn.textContent='Guardando...';btn.disabled=true;
+  const{error}=await sb.auth.updateUser({password:pw});
+  btn.textContent='Guardar nueva contraseña';btn.disabled=false;
+  if(error){showAlert('No se pudo actualizar la contraseña. Pedí un nuevo enlace.');return;}
+  clearAlert();
   const{data:{session}}=await sb.auth.getSession();
   if(session) await redirect(session.user.id);
 }
@@ -140,9 +195,10 @@ async function register(){
 
 function showLogin(){hideAll();document.getElementById('form-login').style.display='block';clearAlert();}
 function showRegister(){hideAll();document.getElementById('form-register').style.display='block';clearAlert();}
-function hideAll(){['form-login','form-register','form-confirm'].forEach(id=>document.getElementById(id).style.display='none');}
+function showForgot(){hideAll();document.getElementById('form-forgot').style.display='block';clearAlert();}
+function hideAll(){['form-login','form-register','form-confirm','form-forgot','form-newpassword'].forEach(id=>document.getElementById(id).style.display='none');}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';hideAll();}
-function showAlert(msg){const el=document.getElementById('alert-box');el.textContent=msg;el.style.display='block';}
+function showAlert(msg){const el=document.getElementById('alert-box');el.className='alert';el.textContent=msg;el.style.display='block';}
 function clearAlert(){document.getElementById('alert-box').style.display='none';}
 
 init();
