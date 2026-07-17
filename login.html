@@ -120,22 +120,31 @@ const ROLE_ROUTES={
 let recoveryMode = false;
 
 async function init(){
-  // If the user arrived here via a password-recovery email link, Supabase fires
-  // this event instead of a normal session. We set a flag here rather than
-  // re-checking window.location.hash afterward, because the SDK strips the
-  // hash from the URL right after consuming it — checking it later is a race
-  // condition that made the app fall through to a normal login redirect.
-  sb.auth.onAuthStateChange((event)=>{
-    if(event==='PASSWORD_RECOVERY'){
-      recoveryMode=true;
-      hideAll();
-      document.getElementById('form-newpassword').style.display='block';
+  // Supabase's PKCE flow has a known bug where PASSWORD_RECOVERY fires
+  // unreliably (SIGNED_IN fires first/instead), which logs the user in
+  // before they can set a new password. To avoid depending on that event,
+  // we read the token directly from the link (see email template) and
+  // verify it ourselves.
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get('token_hash');
+  const type = params.get('type');
+
+  if(tokenHash && type==='recovery'){
+    showLoading(true);
+    const{error}=await sb.auth.verifyOtp({token_hash:tokenHash, type:'recovery'});
+    showLoading(false);
+    history.replaceState(null,'',window.location.pathname);
+    if(error){
+      showLogin();
+      showAlert('El enlace de recuperación no es válido o ya expiró. Solicitá uno nuevo.');
+      return;
     }
-  });
-  // Give the SDK a brief moment to parse the URL and fire PASSWORD_RECOVERY
-  // if applicable, before we decide whether to auto-redirect a normal session.
-  await new Promise(r=>setTimeout(r,150));
-  if(recoveryMode) return;
+    recoveryMode=true;
+    hideAll();
+    document.getElementById('form-newpassword').style.display='block';
+    return;
+  }
+
   const{data:{session}}=await sb.auth.getSession();
   if(session) await redirect(session.user.id);
 }
