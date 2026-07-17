@@ -117,17 +117,27 @@ const ROLE_ROUTES={
   registro:'registro.html'
 };
 
+let recoveryMode = false;
+
 async function init(){
   // If the user arrived here via a password-recovery email link, Supabase fires
-  // this event instead of a normal session — show the "set new password" form.
+  // this event instead of a normal session. We set a flag here rather than
+  // re-checking window.location.hash afterward, because the SDK strips the
+  // hash from the URL right after consuming it — checking it later is a race
+  // condition that made the app fall through to a normal login redirect.
   sb.auth.onAuthStateChange((event)=>{
     if(event==='PASSWORD_RECOVERY'){
+      recoveryMode=true;
       hideAll();
       document.getElementById('form-newpassword').style.display='block';
     }
   });
+  // Give the SDK a brief moment to parse the URL and fire PASSWORD_RECOVERY
+  // if applicable, before we decide whether to auto-redirect a normal session.
+  await new Promise(r=>setTimeout(r,150));
+  if(recoveryMode) return;
   const{data:{session}}=await sb.auth.getSession();
-  if(session && !window.location.hash.includes('type=recovery')) await redirect(session.user.id);
+  if(session) await redirect(session.user.id);
 }
 
 async function sendResetLink(){
@@ -152,6 +162,8 @@ async function updatePassword(){
   btn.textContent='Guardar nueva contraseña';btn.disabled=false;
   if(error){showAlert('No se pudo actualizar la contraseña. Pedí un nuevo enlace.');return;}
   clearAlert();
+  recoveryMode=false;
+  history.replaceState(null,'',window.location.pathname);
   const{data:{session}}=await sb.auth.getSession();
   if(session) await redirect(session.user.id);
 }
