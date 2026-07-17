@@ -651,8 +651,12 @@ async function guardarPerfil(){
 function toggleTrabajo(){document.getElementById('trabajo-desc-wrap').style.display=document.getElementById('p-trabajo').value==='true'?'block':'none';}
 
 async function cargarPeriodoActivo(){
-  const{data}=await sb.from('periodos_solicitud').select('*').eq('activo',true).order('fecha_apertura',{ascending:false}).limit(1).single().catch(()=>({data:null}));
-  periodoActivo=data||null;
+  try{
+    const{data}=await sb.from('periodos_solicitud').select('*').eq('activo',true).order('fecha_apertura',{ascending:false}).limit(1).single();
+    periodoActivo=data||null;
+  }catch(e){
+    periodoActivo=null;
+  }
   return periodoActivo;
 }
 

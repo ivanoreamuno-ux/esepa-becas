@@ -443,7 +443,10 @@ async function reintentarCorreo(correoId,solicitudId){
   if(!solicitud){showAlert('No se encontró la solicitud original. Reintentá desde el detalle de notificación.','danger');return;}
 
   const estudianteId=solicitud.perfiles?.id||solicitud.estudiante_id;
-  const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+  let emailData=null;
+  try{
+    ({data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single());
+  }catch(e){emailData=null;}
   const email=emailData||correo.destinatario_email;
 
   if(!email||email==='sin-correo'){showAlert('Este estudiante aún no tiene correo registrado en su perfil.','danger');return;}
@@ -540,7 +543,10 @@ async function enviarNotifInd(){
 
   const estudianteId=solicitudActual.perfiles?.id||solicitudActual.estudiante_id;
   const nombreEst=solicitudActual.perfiles?.nombre_completo||'';
-  const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+  let emailData=null;
+  try{
+    ({data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single());
+  }catch(e){emailData=null;}
   const emailDestinatario=emailData||'';
 
   if(!emailDestinatario){
@@ -593,7 +599,10 @@ async function enviarMasivo(){
     const cuerpo=procVar(pl.cuerpo,s);
     const nombre=s.perfiles?.nombre_completo||'';
     const estudianteId=s.perfiles?.id||s.estudiante_id;
-    const{data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single().catch(()=>({data:null}));
+    let emailData=null;
+    try{
+      ({data:emailData}=await sb.rpc('get_user_email',{user_id:estudianteId}).single());
+    }catch(e){emailData=null;}
     const email=emailData||'';
 
     if(!email){
