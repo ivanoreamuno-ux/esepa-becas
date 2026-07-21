@@ -270,7 +270,9 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Período académico</label>
-              <select id="sol-periodo"><option value="2C 2026">2do Cuatrimestre 2026</option><option value="3C 2026">3er Cuatrimestre 2026</option><option value="1C 2027">1er Cuatrimestre 2027</option></select>
+              <input type="text" id="sol-periodo-display" readonly style="background:var(--bg);cursor:not-allowed;font-weight:600;color:var(--brand)" value="—">
+              <input type="hidden" id="sol-periodo" value="">
+              <p style="font-size:11px;color:var(--muted);margin-top:4px">Este es el período de solicitud abierto actualmente. Se asigna automáticamente.</p>
             </div>
             <div class="form-group"><label>Cantidad de cursos a matricular</label>
               <input type="number" id="sol-cursos" min="1" max="4" value="1">
@@ -900,9 +902,12 @@ async function enviarSolicitud(){
   const btn=document.getElementById('btn-solicitud');
   btn.textContent=modoEdicion?'Actualizando...':'Enviando...';btn.disabled=true;
 
+  // El período se toma del período activo real (creación) o de la solicitud existente (edición),
+  // nunca de un campo editable — evita desajustes entre el período de la solicitud y el de los fondos.
+  const periodoSolicitud=modoEdicion&&solicitudActivaPeriodo?solicitudActivaPeriodo.periodo:(periodoActivo?periodoActivo.periodo_academico:document.getElementById('sol-periodo').value);
   const payload={
     tipo_solicitud:document.getElementById('sol-tipo').value,
-    periodo:document.getElementById('sol-periodo').value,
+    periodo:periodoSolicitud,
     programa:prog,cantidad_cursos:cursos,
     motivo:document.getElementById('sol-economica').value.trim(),
     resp_situacion_economica:document.getElementById('sol-economica').value.trim(),
@@ -1023,8 +1028,8 @@ function resetFormularioSolicitud(){
   document.getElementById('sol-cursos').value='1';
   document.getElementById('sol-carta-respuesta').value='pendiente';
   if(periodoActivo){
-    const sel=document.getElementById('sol-periodo');
-    if(sel)for(const opt of sel.options)opt.selected=(opt.value===periodoActivo.periodo_academico);
+    document.getElementById('sol-periodo').value=periodoActivo.periodo_academico;
+    document.getElementById('sol-periodo-display').value=periodoActivo.periodo_academico;
   }
 }
 
@@ -1039,8 +1044,8 @@ async function cargarSolicitudParaEditar(){
     document.getElementById('sol-tipo').value=s.tipo_solicitud;
     document.getElementById('sol-cursos').value=s.cantidad_cursos;
     document.getElementById('sol-programa').value=s.programa;
-    const sel=document.getElementById('sol-periodo');
-    for(const opt of sel.options)opt.selected=(opt.value===s.periodo);
+    document.getElementById('sol-periodo').value=s.periodo;
+    document.getElementById('sol-periodo-display').value=s.periodo;
     document.getElementById('sol-economica').value=s.resp_situacion_economica||'';
     document.getElementById('sol-ministerio').value=s.resp_impacto_ministerio||'';
     document.getElementById('sol-conexion').value=s.resp_impacto_ministerio||''; // conexión se guarda combinada históricamente

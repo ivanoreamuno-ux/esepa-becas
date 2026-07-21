@@ -601,26 +601,76 @@ async function abrirDetalle(id,estado){
     pregBloque(5,'Compromisos',s.resp_compromisos)+
     pregBloque(6,'Referencia pastoral',s.resp_referencia_pastoral)+
 
+    // CARTA PASTORAL
+    bloqueCartaPastoral(s)+
+
     // PANEL DE DECISIÓN
     (yaDecidida ? panelDecisionTomada(s) : panelDecision(s));
 
   // Poblar fondos en el select — solo fondos asignados al período de esta solicitud
   if(!yaDecidida){
-    const{data:periodoObj}=await sb.from('periodos_solicitud').select('id').eq('periodo_academico',s.periodo).single();
-    let asignaciones=[];
-    if(periodoObj){
-      const{data}=await sb.from('asignaciones_fondo_periodo').select('id,fondo_id,monto_disponible,fondos_beca(nombre)').eq('periodo_id',periodoObj.id);
-      asignaciones=data||[];
-    }
     const sel=document.getElementById('sel-fondo-'+s.id);
-    if(sel){
-      if(!asignaciones.length){
-        sel.innerHTML='<option value="">⚠ Sin fondos asignados a este período</option>';
-      } else {
-        sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+asignaciones.map(a=>'<option value="'+a.fondo_id+'" data-asignacion="'+a.id+'" data-disponible="'+a.monto_disponible+'"'+(s.fondo_id===a.fondo_id?' selected':'')+'>'+(a.fondos_beca?.nombre||'Fondo')+' (₡'+a.monto_disponible.toLocaleString('es-CR')+' disp. en este período)</option>').join('');
-      }
+    let periodoObj=null;
+    try{
+      ({data:periodoObj}=await sb.from('periodos_solicitud').select('id').eq('periodo_academico',s.periodo).single());
+    }catch(e){periodoObj=null;}
+    if(!sel)return;
+    if(!periodoObj){
+      // El período de la solicitud no existe en periodos_solicitud (dato viejo o desajustado)
+      sel.innerHTML='<option value="">⚠ Período "'+escapeHtml(s.periodo||'—')+'" no encontrado</option>';
+      return;
+    }
+    const{data}=await sb.from('asignaciones_fondo_periodo').select('id,fondo_id,monto_disponible,fondos_beca(nombre)').eq('periodo_id',periodoObj.id);
+    const asignaciones=data||[];
+    if(!asignaciones.length){
+      sel.innerHTML='<option value="">⚠ Sin fondos asignados a este período</option>';
+    } else {
+      sel.innerHTML='<option value="">Sin fondo asignado aún</option>'+asignaciones.map(a=>'<option value="'+a.fondo_id+'" data-asignacion="'+a.id+'" data-disponible="'+a.monto_disponible+'"'+(s.fondo_id===a.fondo_id?' selected':'')+'>'+(a.fondos_beca?.nombre||'Fondo')+' (₡'+a.monto_disponible.toLocaleString('es-CR')+' disp. en este período)</option>').join('');
     }
   }
+}
+
+function bloqueCartaPastoral(s){
+  const resp=s.carta_pastoral_respuesta||'pendiente';
+  const respMap={
+    positiva:{txt:'✅ La iglesia apoyará al estudiante',color:'var(--success)',bg:'#f0fdf4',border:'#bbf7d0'},
+    negativa:{txt:'❌ La iglesia no puede apoyar en este momento',color:'var(--danger)',bg:'var(--danger-bg)',border:'#fecaca'},
+    pendiente:{txt:'⏳ Respuesta de la iglesia aún pendiente',color:'var(--warning)',bg:'#fffbeb',border:'#fde68a'}
+  };
+  const r=respMap[resp]||respMap.pendiente;
+  const tieneDoc=!!s.carta_pastoral_url;
+  return '<div style="font-size:13px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:0.04em;margin:1.5rem 0 1rem">📜 Carta de presentación pastoral</div>'+
+    '<div class="detail-card" style="margin-bottom:1.5rem">'+
+      '<div style="padding:12px 14px;border-radius:8px;background:'+r.bg+';border:1px solid '+r.border+';margin-bottom:14px">'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:2px">Respuesta declarada por el estudiante sobre el apoyo de su iglesia:</div>'+
+        '<div style="font-size:14px;font-weight:600;color:'+r.color+'">'+r.txt+'</div>'+
+      '</div>'+
+      (tieneDoc
+        ? '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+            '<span style="font-size:13px;color:var(--muted)">Documento firmado adjunto por el estudiante:</span>'+
+            '<button class="btn btn-secondary btn-sm" id="btn-carta-'+s.id+'" onclick="descargarCartaPastoral(\''+s.id+'\',\''+encodeURIComponent(s.carta_pastoral_url)+'\')">📄 Ver / descargar carta</button>'+
+            '<span id="carta-status-'+s.id+'" style="font-size:12px;color:var(--muted)"></span>'+
+          '</div>'
+        : '<div class="alert alert-warning" style="margin:0">⚠ El estudiante <strong>no ha adjuntado</strong> el documento de la carta pastoral. Puede enviarlo después contactando a administración.</div>'
+      )+
+    '</div>';
+}
+
+async function descargarCartaPastoral(solId,pathEncoded){
+  const path=decodeURIComponent(pathEncoded);
+  const statusEl=document.getElementById('carta-status-'+solId);
+  const btn=document.getElementById('btn-carta-'+solId);
+  if(btn){btn.disabled=true;}
+  if(statusEl){statusEl.textContent='Generando enlace seguro...';statusEl.style.color='var(--muted)';}
+  try{
+    const{data,error}=await sb.storage.from('becas-documentos').createSignedUrl(path,300);
+    if(error||!data?.signedUrl){throw new Error(error?.message||'No se pudo generar el enlace.');}
+    window.open(data.signedUrl,'_blank','noopener');
+    if(statusEl){statusEl.textContent='✓ Enlace abierto (válido 5 min).';statusEl.style.color='var(--success)';}
+  }catch(e){
+    if(statusEl){statusEl.textContent='✗ Error: '+e.message;statusEl.style.color='var(--danger)';}
+  }
+  if(btn){btn.disabled=false;}
 }
 
 function pregBloque(num,titulo,resp,resp2,skip){
