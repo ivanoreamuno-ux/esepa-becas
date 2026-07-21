@@ -392,7 +392,7 @@ async function llamarEdgeFunction(destinatario_email,destinatario_nombre,asunto,
 async function cargarTodo(){
   const{data}=await sb.from('solicitudes').select('*,perfiles!solicitudes_estudiante_id_fkey(id,nombre_completo,pais),fondos_beca(nombre)').order('creado_en',{ascending:false});
   todasSolicitudes=data||[];
-  const{data:pl}=await sb.from('plantillas_correo').select('*').eq('activa',true).order('nombre');
+  const{data:pl}=await sb.from('plantillas_correo').select('*').order('activa',{ascending:false}).order('nombre');
   plantillas=pl||[];
   renderCola();renderNotificaciones();renderMatricula();renderPlantillasList();renderReporte();
   const cola=todasSolicitudes.filter(s=>s.estado==='aprobada').length;
@@ -668,7 +668,22 @@ async function confirmarMatricula(){
 function renderPlantillasList(){
   const c=document.getElementById('lista-plantillas');
   if(!plantillas.length){c.innerHTML='<div class="empty"><div class="empty-icon">\ud83d\udcdd</div><h3>Sin plantillas</h3></div>';return;}
-  c.innerHTML=plantillas.map(p=>'<div class="card" style="display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px">'+p.nombre+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Asunto: '+p.asunto+'</div><div style="font-size:12px;color:var(--muted);background:var(--bg);padding:6px 10px;border-radius:6px;max-height:60px;overflow:hidden">'+p.cuerpo.substring(0,150)+(p.cuerpo.length>150?'...':'')+'</div></div><button class="btn btn-secondary btn-sm" onclick="editarPl(\''+p.id+'\')">Editar</button></div>').join('');
+  c.innerHTML=plantillas.map(p=>'<div class="card" style="display:flex;gap:12px;align-items:flex-start'+(p.activa?'':';opacity:0.65')+'"><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px">'+p.nombre+(p.activa?'':' <span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px 8px;text-transform:uppercase;letter-spacing:0.03em">Inactiva</span>')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Asunto: '+p.asunto+'</div><div style="font-size:12px;color:var(--muted);background:var(--bg);padding:6px 10px;border-radius:6px;max-height:60px;overflow:hidden">'+p.cuerpo.substring(0,150)+(p.cuerpo.length>150?'...':'')+'</div></div><div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button class="btn btn-secondary btn-sm" onclick="editarPl(\''+p.id+'\')">Editar</button>'+(p.activa?'<button class="btn btn-secondary btn-sm" onclick="toggleActivaPl(\''+p.id+'\',false)">Desactivar</button>':'<button class="btn btn-secondary btn-sm" style="border-color:var(--success);color:var(--success)" onclick="toggleActivaPl(\''+p.id+'\',true)">Reactivar</button><button class="btn btn-secondary btn-sm" style="border-color:var(--danger);color:var(--danger)" onclick="eliminarPlantillaPermanente(\''+p.id+'\',\''+p.nombre.replace(/'/g,"\\'")+'\')">Eliminar</button>')+'</div></div>').join('');
+}
+
+async function toggleActivaPl(id,nuevoEstado){
+  const{error}=await sb.from('plantillas_correo').update({activa:nuevoEstado,actualizado_en:new Date().toISOString()}).eq('id',id);
+  if(error){showAlert('\u2717 Error: '+error.message,'danger');return;}
+  showAlert(nuevoEstado?'\u2713 Plantilla reactivada.':'\u2713 Plantilla desactivada.','success');
+  await cargarTodo();
+}
+
+async function eliminarPlantillaPermanente(id,nombre){
+  if(!confirm('\u00bfEliminar permanentemente la plantilla "'+nombre+'"? Esta acci\u00f3n no se puede deshacer.'))return;
+  const{error}=await sb.from('plantillas_correo').delete().eq('id',id);
+  if(error){showAlert('\u2717 Error al eliminar: '+error.message,'danger');return;}
+  showAlert('\u2713 Plantilla eliminada permanentemente.','success');
+  await cargarTodo();
 }
 
 function nuevaPlantilla(){plantillaActual=null;['pl-nombre','pl-asunto','pl-cuerpo'].forEach(id=>document.getElementById(id).value='');document.getElementById('pl-activa').value='true';document.getElementById('mpl-titulo').textContent='Nueva plantilla';document.getElementById('alert-mpl').innerHTML='';document.getElementById('modal-pl').classList.add('open');}
@@ -715,7 +730,7 @@ function renderReporte(){
 
 function abrirDesdeReporte(id){const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;if(s.estado==='aprobada')abrirQ10(id);else if(s.estado==='procesada_q10')abrirNotifInd(id);else if(s.estado==='notificado')abrirMat(id);}
 
-function poblarPl(selId){const sel=document.getElementById(selId);if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="">Seleccionar plantilla...</option>'+plantillas.map(p=>'<option value="'+p.id+'">'+p.nombre+'</option>').join('');if(cur)sel.value=cur;}
+function poblarPl(selId){const sel=document.getElementById(selId);if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="">Seleccionar plantilla...</option>'+plantillas.filter(p=>p.activa).map(p=>'<option value="'+p.id+'">'+p.nombre+'</option>').join('');if(cur)sel.value=cur;}
 function procVar(t,s){return t.replace(/\{\{nombre\}\}/g,s.perfiles?.nombre_completo||'Estudiante').replace(/\{\{periodo\}\}/g,s.periodo||'').replace(/\{\{monto\}\}/g,'\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')).replace(/\{\{fondo\}\}/g,s.fondos_beca?.nombre||'Fondo ESEPA').replace(/\{\{programa\}\}/g,s.programa||'');}
 function pipeHtml(e){const p=['aprobada','procesada_q10','notificado','matriculado'];const d=p.indexOf(e);return '<div class="pipeline">'+p.map((x,i)=>(i>0?'<span class="step-arrow">›</span>':'')+'<span class="step '+(i<d?'done':i===d?'active':'pending')+'">'+({aprobada:'Aprobada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado'})[x]+'</span>').join('')+'</div>';}
 function dr(l,v,h){return '<div class="detail-row"><span class="dl">'+l+'</span><span class="dv">'+(v?(h?v:escapeHtml(v)):'-')+'</span></div>';}
