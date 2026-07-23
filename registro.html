@@ -343,6 +343,7 @@
         <span class="tag-chip" onclick="insertVar('{{monto}}')">{{monto}}</span>
         <span class="tag-chip" onclick="insertVar('{{fondo}}')">{{fondo}}</span>
         <span class="tag-chip" onclick="insertVar('{{programa}}')">{{programa}}</span>
+        <span class="tag-chip" onclick="insertVar('{{comentario}}')">{{comentario}}</span>
       </div>
       <label>Cuerpo</label>
       <textarea id="pl-cuerpo" class="editor-area" rows="12" placeholder="Escribí el correo aquí. Usá las variables para personalizar."></textarea>
@@ -731,7 +732,7 @@ function renderReporte(){
 function abrirDesdeReporte(id){const s=todasSolicitudes.find(x=>x.id===id);if(!s)return;if(s.estado==='aprobada')abrirQ10(id);else if(s.estado==='procesada_q10')abrirNotifInd(id);else if(s.estado==='notificado')abrirMat(id);}
 
 function poblarPl(selId){const sel=document.getElementById(selId);if(!sel)return;const cur=sel.value;sel.innerHTML='<option value="">Seleccionar plantilla...</option>'+plantillas.filter(p=>p.activa).map(p=>'<option value="'+p.id+'">'+p.nombre+'</option>').join('');if(cur)sel.value=cur;}
-function procVar(t,s){return t.replace(/\{\{nombre\}\}/g,s.perfiles?.nombre_completo||'Estudiante').replace(/\{\{periodo\}\}/g,s.periodo||'').replace(/\{\{monto\}\}/g,'\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')).replace(/\{\{fondo\}\}/g,s.fondos_beca?.nombre||'Fondo ESEPA').replace(/\{\{programa\}\}/g,s.programa||'');}
+function procVar(t,s){return t.replace(/\{\{nombre\}\}/g,s.perfiles?.nombre_completo||'Estudiante').replace(/\{\{periodo\}\}/g,s.periodo||'').replace(/\{\{monto\}\}/g,'\u20a1'+(s.monto_asignado||0).toLocaleString('es-CR')).replace(/\{\{fondo\}\}/g,s.fondos_beca?.nombre||'Fondo ESEPA').replace(/\{\{programa\}\}/g,s.programa||'').replace(/\{\{comentario\}\}/g,s.comentario_comite_estudiante?('"'+s.comentario_comite_estudiante+'"'):'');}
 function pipeHtml(e){const p=['aprobada','procesada_q10','notificado','matriculado'];const d=p.indexOf(e);return '<div class="pipeline">'+p.map((x,i)=>(i>0?'<span class="step-arrow">›</span>':'')+'<span class="step '+(i<d?'done':i===d?'active':'pending')+'">'+({aprobada:'Aprobada',procesada_q10:'En Q10',notificado:'Notificado',matriculado:'Matriculado'})[x]+'</span>').join('')+'</div>';}
 function dr(l,v,h){return '<div class="detail-row"><span class="dl">'+l+'</span><span class="dv">'+(v?(h?v:escapeHtml(v)):'-')+'</span></div>';}
 function bdg(e){return '<span class="badge badge-'+e+'">'+(ESTADOS[e]||e)+'</span>';}

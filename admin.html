@@ -363,6 +363,82 @@ async function adminLogin() {
 
 async function adminLogout() { await sb.auth.signOut(); window.location.href='login.html'; }
 
+// ─── CORREO AUTOMÁTICO DE RECHAZO ───────────────────────────────────────────
+// Misma lógica que en comite.html — se dispara desde guardarCambiosSolicitud()
+// cuando Admin cambia el estado de una solicitud a "rechazada" directamente.
+const EDGE_URL='https://dghypqykargoulzrkmrp.supabase.co/functions/v1/enviar-correo';
+const NOMBRE_PLANTILLA_RECHAZO='Rechazo automático — NO EDITAR EL NOMBRE';
+
+async function llamarEdgeFunction(destinatario_email,destinatario_nombre,asunto,cuerpo){
+  const{data:{session}}=await sb.auth.getSession();
+  const res=await fetch(EDGE_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({destinatario_email,destinatario_nombre,asunto,cuerpo})
+  });
+  const json=await res.json();
+  if(!res.ok||json.ok===false) throw new Error(json.error||'Error enviando correo');
+  return json;
+}
+
+function procVarRechazo(t,s){
+  return t.replace(/\{\{nombre\}\}/g,s.perfiles?.nombre_completo||'Estudiante')
+          .replace(/\{\{periodo\}\}/g,s.periodo||'')
+          .replace(/\{\{programa\}\}/g,s.programa||'')
+          .replace(/\{\{comentario\}\}/g,s.comentario_comite_estudiante?('"'+s.comentario_comite_estudiante+'"'):'');
+}
+
+// Nunca lanza — un fallo acá no debe impedir que el cambio de estado quede guardado.
+async function enviarCorreoRechazoAutomatico(s,enviadoPorId){
+  const nombreEst=s.perfiles?.nombre_completo||'';
+  try{
+    const{data:pl}=await sb.from('plantillas_correo').select('*').eq('nombre',NOMBRE_PLANTILLA_RECHAZO).eq('activa',true).maybeSingle();
+    if(!pl){
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:'sin-plantilla',destinatario_nombre:nombreEst,
+        asunto:'(rechazo automático)',cuerpo:'',enviado_por:enviadoPorId,estado_envio:'fallido',
+        error_detalle:'No existe la plantilla "'+NOMBRE_PLANTILLA_RECHAZO+'" activa. Creála en Registro → Plantillas.',
+        intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+      return;
+    }
+
+    const estudianteId=s.perfiles?.id||s.estudiante_id;
+    let email=null;
+    try{ ({data:email}=await sb.rpc('get_user_email',{user_id:estudianteId}).single()); }catch(e){email=null;}
+
+    const asunto=procVarRechazo(pl.asunto,s);
+    const cuerpo=procVarRechazo(pl.cuerpo,s);
+
+    if(!email){
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:'sin-correo',destinatario_nombre:nombreEst,
+        asunto,cuerpo,enviado_por:enviadoPorId,estado_envio:'fallido',
+        error_detalle:'No se encontró correo registrado para este estudiante.',
+        intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+      return;
+    }
+
+    try{
+      await llamarEdgeFunction(email,nombreEst,asunto,cuerpo);
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombreEst,
+        asunto,cuerpo,enviado_por:enviadoPorId,estado_envio:'enviado',
+        intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+    }catch(err){
+      await sb.from('correos_enviados').insert({
+        solicitud_id:s.id,destinatario_email:email,destinatario_nombre:nombreEst,
+        asunto,cuerpo,enviado_por:enviadoPorId,estado_envio:'fallido',
+        error_detalle:err.message,intentos:1,ultimo_intento_en:new Date().toISOString()
+      });
+    }
+  }catch(e){
+    console.error('Error en enviarCorreoRechazoAutomatico:',e);
+  }
+}
+
 function showApp() { document.getElementById('page-auth').style.display='none'; document.getElementById('page-app').style.display='block'; cargarDashboard(); }
 
 function showAdminPage(page) {
@@ -496,9 +572,20 @@ async function guardarCambiosSolicitud() {
     if (fondo && fondo.monto_disponible < updates.monto_asignado) { showAlert('modal','El monto supera el disponible en este fondo.','danger'); btn.textContent='Guardar cambios'; btn.disabled=false; return; }
     await sb.from('fondos_beca').update({ monto_disponible: fondo.monto_disponible - updates.monto_asignado }).eq('id',updates.fondo_id);
   }
+  const solicitudPrevia=solicitudActual;
   const { error } = await sb.from('solicitudes').update(updates).eq('id',solicitudActual.id);
   btn.textContent='Guardar cambios'; btn.disabled=false;
   if (error) { showAlert('modal','Error: '+error.message,'danger'); return; }
+
+  if(updates.estado==='rechazada' && solicitudPrevia.estado!=='rechazada'){
+    await enviarCorreoRechazoAutomatico({
+      id:solicitudPrevia.id,estudiante_id:solicitudPrevia.estudiante_id,
+      periodo:solicitudPrevia.periodo,programa:solicitudPrevia.programa,
+      perfiles:solicitudPrevia.perfiles,
+      comentario_comite_estudiante:solicitudPrevia.comentario_comite_estudiante||null
+    },currentAdmin.id);
+  }
+
   closeModal('modal-solicitud');
   await cargarSolicitudes(); await cargarDashboard();
   showAdminPage('solicitudes');
